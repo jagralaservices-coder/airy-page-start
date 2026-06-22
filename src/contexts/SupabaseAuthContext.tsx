@@ -86,6 +86,25 @@ export const SupabaseAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
     localStorage.removeItem('pos_active_store_data');
   }, []);
 
+  const markAccountSuspended = useCallback(async () => {
+    console.warn('[Auth] Account suspended — signing out');
+    try {
+      localStorage.setItem('pos_account_suspended', 'true');
+    } catch {}
+    localStorage.removeItem('pos_session_active');
+    localStorage.removeItem('pos_session_backup');
+    localStorage.removeItem('pos_user_backup');
+    localStorage.removeItem('pos_user_role_backup');
+    localStorage.removeItem('pos_customer_backup');
+    localStorage.removeItem('pos_store_backup');
+    clearLegacyLoginState();
+    clearRoleState();
+    await supabase.auth.signOut();
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
+      window.location.href = '/auth';
+    }
+  }, [clearLegacyLoginState, clearRoleState]);
+
   const fetchUserData = useCallback(async (userId: string, authUser?: User | null): Promise<UserRoleData | null> => {
     try {
       if (localStorage.getItem('pos_login_as_demo') === 'true') {
@@ -162,21 +181,7 @@ export const SupabaseAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       // If user has role rows but none are active => account suspended
       if (!roleData && (roleRows || []).length > 0) {
-        console.warn('[Auth] Account suspended — signing out');
-        try {
-          localStorage.setItem('pos_account_suspended', 'true');
-        } catch {}
-        localStorage.removeItem('pos_session_active');
-        localStorage.removeItem('pos_user_role_backup');
-        localStorage.removeItem('pos_customer_backup');
-        localStorage.removeItem('pos_store_backup');
-        localStorage.removeItem('pos_session_backup');
-        localStorage.removeItem('pos_user_backup');
-        clearRoleState();
-        await supabase.auth.signOut();
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
-          window.location.href = '/auth';
-        }
+        await markAccountSuspended();
         return null;
       }
 
@@ -199,6 +204,10 @@ export const SupabaseAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
             .maybeSingle();
           
           if (!customerError && customerData) {
+            if ((customerData as any).is_active === false || ['suspended', 'rejected'].includes(String((customerData as any).approval_status || '').toLowerCase())) {
+              await markAccountSuspended();
+              return null;
+            }
             setCustomer(customerData as unknown as CustomerData);
             localStorage.setItem('pos_customer_backup', JSON.stringify(customerData));
           } else {
@@ -216,6 +225,10 @@ export const SupabaseAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
             .maybeSingle();
           
           if (!storeError && storeData) {
+            if ((storeData as any).is_active === false) {
+              await markAccountSuspended();
+              return null;
+            }
             const normalizedStore = {
               ...storeData,
               customer_id: (storeData as any).merchant_id,
@@ -296,7 +309,7 @@ export const SupabaseAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
       clearRoleState();
       return null;
     }
-  }, [clearRoleState]);
+  }, [clearRoleState, markAccountSuspended]);
 
   useEffect(() => {
     let isMounted = true;
@@ -577,6 +590,9 @@ export const SupabaseAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       if (!roleRecord) {
         await supabase.auth.signOut();
+        if (localStorage.getItem('pos_account_suspended') === 'true') {
+          return { error: 'Your account has been suspended. Please contact the administrator.' };
+        }
         return { error: 'No active account found for this email. Please contact admin.' };
       }
 
