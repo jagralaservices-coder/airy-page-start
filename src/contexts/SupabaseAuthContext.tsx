@@ -99,9 +99,10 @@ export const SupabaseAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
     localStorage.removeItem('pos_store_backup');
     clearLegacyLoginState();
     clearRoleState();
-    await supabase.auth.signOut();
-    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
-      window.location.href = '/auth';
+    // Global scope kills sessions on all devices for this user
+    try { await supabase.auth.signOut({ scope: 'global' } as any); } catch { await supabase.auth.signOut(); }
+    if (typeof window !== 'undefined' && window.location.pathname !== '/account-suspended') {
+      window.location.href = '/account-suspended';
     }
   }, [clearLegacyLoginState, clearRoleState]);
 
@@ -215,6 +216,22 @@ export const SupabaseAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
           }
         } else {
           setCustomer(null);
+        }
+
+        // Always check merchant.is_active if user_role has merchant_id (owners/managers)
+        if (roleRecord.merchant_id) {
+          const { data: merchantData, error: merchantError } = await supabase
+            .from('merchants')
+            .select('id, is_active, approval_status')
+            .eq('id', roleRecord.merchant_id)
+            .maybeSingle();
+          if (!merchantError && merchantData) {
+            const approval = String((merchantData as any).approval_status || '').toLowerCase();
+            if ((merchantData as any).is_active === false || ['suspended', 'rejected'].includes(approval)) {
+              await markAccountSuspended();
+              return null;
+            }
+          }
         }
 
         if (roleRecord.store_id) {
