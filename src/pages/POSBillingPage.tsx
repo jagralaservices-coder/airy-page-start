@@ -311,9 +311,15 @@ export const POSBillingPage: React.FC = () => {
   };
 
   const pendingAccessSaleRef = React.useRef<{ amount: number; subMethod: AccessPaySubMethod } | null>(null);
+  const pendingAccessPrintWindowRef = React.useRef<Window | null>(null);
 
   const handleAccessPaymentConfirm = (amount: number, subMethod: AccessPaySubMethod) => {
     handlePaymentSelect('access');
+    // Open print window synchronously while still inside user-gesture context
+    // so the browser popup blocker doesn't block it.
+    const printWindow = preparePrintWindow();
+    if (!printWindow) return;
+
     if (cart.length === 0) {
       // No products selected → add a synthetic Access Payment line item, then sale.
       const accessItem: MenuItem = {
@@ -328,19 +334,22 @@ export const POSBillingPage: React.FC = () => {
         preparationTime: 999,
       } as any;
       pendingAccessSaleRef.current = { amount, subMethod };
+      pendingAccessPrintWindowRef.current = printWindow;
       addToCart(accessItem, amount, 1);
     } else {
       // Cart already has items → just complete sale as Access Payment.
-      setTimeout(() => completeSale('print', 'access'), 0);
+      setTimeout(() => completeSale('print', 'access', printWindow), 0);
     }
   };
 
   // When pending access sale flag is set and cart updates, trigger completeSale.
   useEffect(() => {
     if (pendingAccessSaleRef.current && cart.length > 0) {
+      const printWindow = pendingAccessPrintWindowRef.current;
       pendingAccessSaleRef.current = null;
+      pendingAccessPrintWindowRef.current = null;
       setTimeout(() => {
-        completeSale('print', 'access');
+        completeSale('print', 'access', printWindow);
       }, 50);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
