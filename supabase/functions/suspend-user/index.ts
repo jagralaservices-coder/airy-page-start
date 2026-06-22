@@ -44,27 +44,28 @@ serve(async (req) => {
     const activeCol = table === 'staff' ? 'active' : 'is_active'
 
     const { data: before } = await supabaseAdmin.from(table).select('*').eq('id', entity_id).maybeSingle()
-    const update: Record<string, unknown> = {
+    const cascadeUpdate: Record<string, unknown> = {
       [activeCol]: false,
       suspended_at: new Date().toISOString(),
       suspended_by: user.id,
       suspension_reason: reason || null,
     }
+    const update: Record<string, unknown> = table === 'merchants' ? { [activeCol]: false } : cascadeUpdate
     const { error } = await supabaseAdmin.from(table).update(update).eq('id', entity_id)
     if (error) return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
     if (entity_type === 'customer' || entity_type === 'merchant') {
-      await supabaseAdmin.from('customers').update(update).eq('id', entity_id)
-      await supabaseAdmin.from('merchants').update(update).eq('id', entity_id)
-      await supabaseAdmin.from('user_roles').update(update).or(`customer_id.eq.${entity_id},merchant_id.eq.${entity_id}`)
-      await supabaseAdmin.from('stores').update(update).or(`customer_id.eq.${entity_id},merchant_id.eq.${entity_id}`)
+      await supabaseAdmin.from('customers').update(cascadeUpdate).eq('id', entity_id)
+      await supabaseAdmin.from('merchants').update({ is_active: false }).eq('id', entity_id)
+      await supabaseAdmin.from('user_roles').update(cascadeUpdate).or(`customer_id.eq.${entity_id},merchant_id.eq.${entity_id}`)
+      await supabaseAdmin.from('stores').update(cascadeUpdate).or(`customer_id.eq.${entity_id},merchant_id.eq.${entity_id}`)
       if (body.user_id) {
-        await supabaseAdmin.from('user_roles').update(update).eq('user_id', body.user_id)
+        await supabaseAdmin.from('user_roles').update(cascadeUpdate).eq('user_id', body.user_id)
       }
     }
 
     if (entity_type === 'store') {
-      await supabaseAdmin.from('user_roles').update(update).eq('store_id', entity_id)
+      await supabaseAdmin.from('user_roles').update(cascadeUpdate).eq('store_id', entity_id)
     }
 
     await supabaseAdmin.from('audit_logs').insert({
