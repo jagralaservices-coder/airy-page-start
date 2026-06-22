@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>MAXORA</title>
+    <meta name="description" content="MAXORA: Fast, offline-ready restaurant and retail billing system with inventory management, staff tracking, KOT, delivery, and multi-store support.">
+    <meta name="keywords" content="POS, restaurant billing, retail billing, inventory management, staff management, KOT, delivery, India" />
+    <meta name="author" content="MAXORA" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://MAXORA-pos.lovable.app/" />
+    <meta name="theme-color" content="#00335c" />
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- One-time service worker / stale cache cleanup (no reload loop) -->
+    <script>
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            regs.forEach(function (r) { r.unregister().catch(function(){}); });
+          }).catch(function(){});
+        }
+        if (window.caches && caches.keys) {
+          caches.keys().then(function (keys) {
+            keys.filter(function (n) { return /paystore|pwabuilder|workbox|precache|runtime|pages-cache|api-cache|static-resources-cache|images-cache|google-fonts-cache|gstatic-fonts-cache/i.test(n); })
+                .forEach(function (n) { caches.delete(n).catch(function(){}); });
+          }).catch(function(){});
+        }
+      } catch (e) {}
+      try {
+        var last = localStorage.getItem('pos_last_path');
+        if (last && (last.indexOf('http') !== -1 || last === '/index' || last === '/index.html' || last.indexOf('//') === 0)) {
+          localStorage.removeItem('pos_last_path');
+        }
+      } catch (e) {}
+    </script>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/pwa-192x192.png" />
+    <link rel="manifest" href="/manifest.json" />
+
+    
+    
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://MAXORA-pos.lovable.app/" />
+    <meta property="og:image" content="https://MAXORA-pos.lovable.app/pwa-512x512.png">
+    <meta property="og:site_name" content="MAXORA" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@MAXORAPOS" />
+    
+    
+    <meta name="twitter:image" content="https://MAXORA-pos.lovable.app/pwa-512x512.png">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "MAXORA",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web, Android",
+      "description": "Fast, offline-ready restaurant and retail POS billing system with inventory, staff, KOT, delivery & multi-store support.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "INR"
+      }
+    }
+    </script>
+    
+  
+  
+  
+  <meta property="og:title" content="MAXORA">
+  <meta name="twitter:title" content="MAXORA">
+  <meta property="og:description" content="MAXORA: Fast, offline-ready restaurant and retail billing system with inventory management, staff tracking, KOT, delivery, and multi-store support.">
+  <meta name="twitter:description" content="MAXORA: Fast, offline-ready restaurant and retail billing system with inventory management, staff tracking, KOT, delivery, and multi-store support.">
+</head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

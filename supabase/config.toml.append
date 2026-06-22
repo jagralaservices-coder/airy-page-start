@@ -1,0 +1,3 @@
+
+[functions.export-auth-users]
+verify_jwt = false
