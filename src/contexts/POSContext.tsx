@@ -201,13 +201,31 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem('pos_discount', String(discount));
   }, [discount]);
 
+  const hasStoreScopedLogin = useCallback((): boolean => {
+    if (isStoreLogin) return true;
+    if (localStorage.getItem('pos_is_store_login') === 'true') return true;
+    if (localStorage.getItem('pos_store_code')) return true;
+    if (localStorage.getItem('pos_staff_session') || localStorage.getItem('logged_in_staff')) return true;
+    try {
+      const storeData = localStorage.getItem('pos_active_store_data');
+      if (storeData) {
+        const parsed = JSON.parse(storeData);
+        return Boolean(parsed?.storeCode || parsed?.store_code);
+      }
+    } catch {}
+    return false;
+  }, [isStoreLogin]);
+
   // Helper to get store_code for edge function auth
   const getStoreCode = useCallback((): string | null => {
+    const directStoreCode = localStorage.getItem('pos_store_code');
+    if (directStoreCode) return directStoreCode;
     try {
       const storeData = localStorage.getItem('pos_active_store_data');
       if (storeData) {
         const parsed = JSON.parse(storeData);
         if (parsed?.storeCode) return parsed.storeCode;
+        if (parsed?.store_code) return parsed.store_code;
       }
     } catch {}
     return null;
@@ -216,8 +234,10 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
+        const storeScopedLogin = localStorage.getItem('pos_is_store_login') === 'true' || Boolean(localStorage.getItem('pos_store_code'));
+        if (storeScopedLogin || event !== 'SIGNED_IN') return;
         setIsStoreLogin(false);
         localStorage.removeItem('store_login');
         localStorage.removeItem('pos_store_session');
@@ -936,9 +956,12 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const addMenuItems = async (items: Omit<MenuItem, 'id' | 'isAvailable'>[]) => {
     let storeId: string | null = null;
-    if (isStoreLogin) {
+    const storeScopedLogin = hasStoreScopedLogin();
+
+    if (storeScopedLogin) {
       try {
-        storeId = JSON.parse(localStorage.getItem('pos_active_store_data') || '{}')?.id || null;
+        const parsedStore = JSON.parse(localStorage.getItem('pos_active_store_data') || '{}');
+        storeId = parsedStore?.id || parsedStore?.storeId || null;
       } catch {}
       if (!storeId) {
         const active = localStorage.getItem('pos_active_store');
@@ -953,11 +976,11 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         || getActiveStore();
     }
 
-    if (!storeId && !isStoreLogin) {
+    if (!storeId && !storeScopedLogin) {
       toast.error('Please select a store first');
       return false;
     }
-    if (!isStoreLogin && !activeStoreId && storeId) {
+    if (!storeScopedLogin && !activeStoreId && storeId) {
       setActiveStoreIdState(storeId);
       setActiveStoreStorage(storeId);
     }
@@ -979,7 +1002,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logSecurityAction('CREATE', 'menu_items', undefined, undefined, newItemsLocal);
 
     try {
-      if (isStoreLogin && storeId) {
+      if (storeScopedLogin && storeId) {
         const { data: result, error: fnError } = await supabase.functions.invoke('sync-store-data', {
           body: { action: 'save', store_id: storeId, data_type: 'menu_items', store_code: getStoreCode(), items: newItemsLocal.map(item => ({
             id: item.id,
@@ -1009,7 +1032,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             return cleared;
           });
         }
-      } else if (!isStoreLogin) {
+      } else if (!storeScopedLogin) {
         const dbItems = newItemsLocal.map(item => ({
           id: item.id,
           store_id: storeId,
