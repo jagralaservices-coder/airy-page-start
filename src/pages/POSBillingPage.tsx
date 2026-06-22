@@ -1945,12 +1945,14 @@ export const POSBillingPage: React.FC = () => {
                 handlePaymentSelect('cash');
                 setShowMorePayments(false);
               }}
+              disabled={cart.length === 0}
               className={cn(
                 'h-16 rounded-lg flex flex-col items-center justify-center gap-1 border-2 transition-all',
                 selectedPayment === 'cash' 
                   ? 'border-primary bg-primary/10 text-primary' 
                   : 'border-border hover:border-primary/50',
-                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 0 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]'
+                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 0 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]',
+                cart.length === 0 && 'opacity-50 cursor-not-allowed'
               )}
             >
               <Banknote className="w-5 h-5" />
@@ -1963,12 +1965,14 @@ export const POSBillingPage: React.FC = () => {
                 handlePaymentSelect('upi');
                 setShowMorePayments(false);
               }}
+              disabled={cart.length === 0}
               className={cn(
                 'h-16 rounded-lg flex flex-col items-center justify-center gap-1 border-2 transition-all',
                 selectedPayment === 'upi' 
                   ? 'border-primary bg-primary/10 text-primary' 
                   : 'border-border hover:border-primary/50',
-                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 1 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]'
+                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 1 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]',
+                cart.length === 0 && 'opacity-50 cursor-not-allowed'
               )}
             >
               <Smartphone className="w-5 h-5" />
@@ -1981,12 +1985,14 @@ export const POSBillingPage: React.FC = () => {
                 handlePaymentSelect('card');
                 setShowMorePayments(false);
               }}
+              disabled={cart.length === 0}
               className={cn(
                 'h-16 rounded-lg flex flex-col items-center justify-center gap-1 border-2 transition-all',
                 selectedPayment === 'card' 
                   ? 'border-primary bg-primary/10 text-primary' 
                   : 'border-border hover:border-primary/50',
-                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 2 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]'
+                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 2 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]',
+                cart.length === 0 && 'opacity-50 cursor-not-allowed'
               )}
             >
               <CreditCard className="w-5 h-5" />
@@ -1999,12 +2005,14 @@ export const POSBillingPage: React.FC = () => {
                 handlePaymentSelect('due');
                 setShowMorePayments(false);
               }}
+              disabled={cart.length === 0}
               className={cn(
                 'h-16 rounded-lg flex flex-col items-center justify-center gap-1 border-2 transition-all',
                 selectedPayment === 'due' 
                   ? 'border-primary bg-primary/10 text-primary' 
                   : 'border-border hover:border-primary/50',
-                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 3 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]'
+                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 3 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]',
+                cart.length === 0 && 'opacity-50 cursor-not-allowed'
               )}
             >
               <Clock className="w-5 h-5" />
@@ -2017,12 +2025,14 @@ export const POSBillingPage: React.FC = () => {
                 setShowMorePayments(false);
                 setShowPartPaymentDialog(true);
               }}
+              disabled={cart.length === 0}
               className={cn(
                 'h-16 rounded-lg flex flex-col items-center justify-center gap-1 border-2 transition-all',
                 selectedPayment === 'part' 
                   ? 'border-primary bg-primary/10 text-primary' 
                   : 'border-border hover:border-primary/50',
-                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 4 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]'
+                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 4 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]',
+                cart.length === 0 && 'opacity-50 cursor-not-allowed'
               )}
             >
               <SplitSquareHorizontal className="w-5 h-5" />
@@ -2035,12 +2045,14 @@ export const POSBillingPage: React.FC = () => {
                 handlePaymentSelect('wallet');
                 setShowMorePayments(false);
               }}
+              disabled={cart.length === 0}
               className={cn(
                 'h-16 rounded-lg flex flex-col items-center justify-center gap-1 border-2 transition-all',
                 selectedPayment === 'wallet' 
                   ? 'border-primary bg-primary/10 text-primary' 
                   : 'border-border hover:border-primary/50',
-                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 5 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]'
+                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 5 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]',
+                cart.length === 0 && 'opacity-50 cursor-not-allowed'
               )}
             >
               <Wallet className="w-5 h-5 text-blue-500" />
@@ -2053,12 +2065,14 @@ export const POSBillingPage: React.FC = () => {
                 handlePaymentSelect('credit');
                 setShowMorePayments(false);
               }}
+              disabled={cart.length === 0}
               className={cn(
                 'h-16 rounded-lg flex flex-col items-center justify-center gap-1 border-2 transition-all',
                 selectedPayment === 'credit' 
                   ? 'border-primary bg-primary/10 text-primary' 
                   : 'border-border hover:border-primary/50',
-                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 6 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]'
+                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 6 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]',
+                cart.length === 0 && 'opacity-50 cursor-not-allowed'
               )}
             >
               <Receipt className="w-5 h-5 text-amber-500" />
