@@ -68,6 +68,15 @@ serve(async (req) => {
       await supabaseAdmin.from('user_roles').update(cascadeUpdate).eq('store_id', entity_id)
     }
 
+    if (entity_type === 'staff') {
+      await supabaseAdmin.from('user_roles').update({
+        is_active: true,
+        suspended_at: null,
+        suspended_by: null,
+        suspension_reason: null,
+      }).eq('id', entity_id)
+    }
+
     await supabaseAdmin.from('audit_logs').insert({
       actor_id: user.id, actor_email: user.email, action: 'activate',
       entity_type, entity_id, before_data: before, after_data: update,
