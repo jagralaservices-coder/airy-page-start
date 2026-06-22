@@ -2084,8 +2084,8 @@ export const POSBillingPage: React.FC = () => {
             {/* Access Payment - counts in sales like cash */}
             <button
               onClick={() => {
-                handlePaymentSelect('access' as any);
                 setShowMorePayments(false);
+                setShowAccessPaymentDialog(true);
               }}
               className={cn(
                 'h-16 rounded-lg flex flex-col items-center justify-center gap-1 border-2 transition-all',
