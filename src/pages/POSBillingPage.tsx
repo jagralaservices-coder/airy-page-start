@@ -50,6 +50,7 @@ import { toast } from '@/hooks/use-toast';
 import { SplitBillDialog } from '@/components/pos/SplitBillDialog';
 import { DiscountDialog } from '@/components/pos/DiscountDialog';
 import { PartPaymentDialog } from '@/components/pos/PartPaymentDialog';
+import { AccessPaymentDialog, AccessPaySubMethod } from '@/components/pos/AccessPaymentDialog';
 import {
   Select,
   SelectContent,
@@ -144,6 +145,7 @@ export const POSBillingPage: React.FC = () => {
   const [showDiscountDialog, setShowDiscountDialog] = useState(false);
   const [showMorePayments, setShowMorePayments] = useState(false);
   const [showPartPaymentDialog, setShowPartPaymentDialog] = useState(false);
+  const [showAccessPaymentDialog, setShowAccessPaymentDialog] = useState(false);
   const [partPaymentDetails, setPartPaymentDetails] = useState<{ method: string; amount: number }[]>([]);
   const [discountReason, setDiscountReason] = useState('');
   const [deliveryCharge, setDeliveryCharge] = useState(() => {
@@ -307,6 +309,44 @@ export const POSBillingPage: React.FC = () => {
   const handlePaymentSelect = (method: 'cash' | 'card' | 'upi' | 'due' | 'part' | 'wallet' | 'credit' | 'access') => {
     setSelectedPayment(method);
   };
+
+  const pendingAccessSaleRef = React.useRef<{ amount: number; subMethod: AccessPaySubMethod } | null>(null);
+
+  const handleAccessPaymentConfirm = (amount: number, subMethod: AccessPaySubMethod) => {
+    handlePaymentSelect('access');
+    if (cart.length === 0) {
+      // No products selected → add a synthetic Access Payment line item, then sale.
+      const accessItem: MenuItem = {
+        id: `access-pay-${Date.now()}`,
+        name: `Access Payment (${subMethod.toUpperCase()})`,
+        price: amount,
+        category: 'access',
+        categoryId: activeCategory || 'access',
+        description: 'Access payment entry',
+        image: '',
+        available: true,
+        preparationTime: 999,
+      } as any;
+      pendingAccessSaleRef.current = { amount, subMethod };
+      addToCart(accessItem, amount, 1);
+    } else {
+      // Cart already has items → just complete sale as Access Payment.
+      setTimeout(() => completeSale('print', 'access'), 0);
+    }
+  };
+
+  // When pending access sale flag is set and cart updates, trigger completeSale.
+  useEffect(() => {
+    if (pendingAccessSaleRef.current && cart.length > 0) {
+      pendingAccessSaleRef.current = null;
+      setTimeout(() => {
+        completeSale('print', 'access');
+      }, 50);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart.length]);
+
+
 
   const getStoreId = (): string => {
     try {
@@ -2082,8 +2122,8 @@ export const POSBillingPage: React.FC = () => {
             {/* Access Payment - counts in sales like cash */}
             <button
               onClick={() => {
-                handlePaymentSelect('access' as any);
                 setShowMorePayments(false);
+                setShowAccessPaymentDialog(true);
               }}
               className={cn(
                 'h-16 rounded-lg flex flex-col items-center justify-center gap-1 border-2 transition-all',
@@ -2113,6 +2153,14 @@ export const POSBillingPage: React.FC = () => {
             description: payments.map(p => `${p.method}: ${formatCurrency(p.amount)}`).join(', '),
           });
         }}
+      />
+
+      {/* Access Payment Dialog */}
+      <AccessPaymentDialog
+        open={showAccessPaymentDialog}
+        onOpenChange={setShowAccessPaymentDialog}
+        defaultAmount={cart.length > 0 ? finalTotal : 0}
+        onConfirm={handleAccessPaymentConfirm}
       />
 
       {/* It's Paid Confirmation Dialog */}
