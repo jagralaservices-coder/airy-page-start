@@ -68,6 +68,19 @@ serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
+    if (storeData.merchant_id) {
+      const { data: linkedMerchant } = await supabaseAdmin
+        .from('merchants')
+        .select('is_active, approval_status')
+        .eq('id', storeData.merchant_id)
+        .maybeSingle()
+
+      if (linkedMerchant && (linkedMerchant.is_active === false || String(linkedMerchant.approval_status || '').toLowerCase() === 'suspended')) {
+        return new Response(JSON.stringify({ error: 'This account has been suspended. Please contact the administrator.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+    }
+
     const { data: authData, error: authError } = await supabaseAuth.auth.signInWithPassword({
       email: String(storeData.email).trim().toLowerCase(),
       password: sanitizedPassword,

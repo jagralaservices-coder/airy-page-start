@@ -50,26 +50,20 @@ export default function MerchantManagementPage() {
 
   const toggleSuspend = async (m: Merchant) => {
     const newState = !m.is_active;
-    
-    // Update merchant status
-    const { error: merchantError } = await supabase.from('merchants').update({ is_active: newState }).eq('id', m.id);
-    if (merchantError) {
-      toast({ title: 'Update failed', description: merchantError.message, variant: 'destructive' });
+    const functionName = newState ? 'activate-user' : 'suspend-user';
+    const { data, error } = await supabase.functions.invoke(functionName, {
+      body: {
+        entity_type: 'merchant',
+        entity_id: m.id,
+        reason: newState ? undefined : 'Suspended by admin',
+      },
+    });
+
+    if (error || data?.error) {
+      toast({ title: 'Update failed', description: data?.error || error?.message || 'Error', variant: 'destructive' });
       return;
     }
 
-    // Also update customers table
-    const { error: customerError } = await supabase.from('customers').update({ is_active: newState }).eq('id', m.id);
-    if (customerError) {
-      console.error('Failed to update customers status', customerError);
-    }
-    
-    // Also update all user_roles associated with this merchant to block/allow login
-    const { error: roleError } = await supabase.from('user_roles').update({ is_active: newState }).eq('customer_id', m.id);
-    if (roleError) {
-      console.error('Failed to update user_roles status', roleError);
-    }
-    
     toast({ title: newState ? 'Merchant activated' : 'Merchant suspended' });
     fetchMerchants();
   };
