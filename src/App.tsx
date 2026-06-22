@@ -99,6 +99,7 @@ const TaxEnginePage = lazy(() => import("./pages/TaxEnginePage"));
 const RevenueForecastPage = lazy(() => import("./pages/RevenueForecastPage"));
 const PRDPage = lazy(() => import("./pages/PRDPage"));
 const ResetPasswordPage = lazy(() => import("./pages/auth/ResetPasswordPage"));
+const AccountSuspendedPage = lazy(() => import("./pages/auth/AccountSuspendedPage"));
 const CustomerMenuPage = lazy(() => import("./pages/CustomerMenuPage"));
 const QROrdersPage = lazy(() => import("./pages/QROrdersPage"));
 const OrderTrackingPage = lazy(() => import("./pages/OrderTrackingPage"));
