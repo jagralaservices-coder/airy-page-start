@@ -483,6 +483,17 @@ export const useAnalytics = (timeRange: TimeRange = 'today', customDateRange?: C
         cardAmt = breakdown.amounts.card;
         upiAmt = breakdown.amounts.upi;
         creditAmt = breakdown.amounts.credit;
+      } else if (method === 'access') {
+        const breakdown = getPaymentBreakdownSummary(o);
+        const subTotal = breakdown.amounts.cash + breakdown.amounts.card + breakdown.amounts.upi + breakdown.amounts.credit;
+        if (subTotal > 0) {
+          cashAmt = breakdown.amounts.cash;
+          cardAmt = breakdown.amounts.card;
+          upiAmt = breakdown.amounts.upi;
+          creditAmt = breakdown.amounts.credit;
+        } else {
+          cashAmt = o.total;
+        }
       } else if (method === 'cash') {
         cashAmt = o.total;
       } else if (method === 'card') {
