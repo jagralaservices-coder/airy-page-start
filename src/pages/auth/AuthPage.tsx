@@ -76,12 +76,10 @@ const AuthPage: React.FC = () => {
 
   useEffect(() => {
     if (localStorage.getItem('pos_account_suspended') === 'true') {
-      const msg = 'Your account has been suspended. Please contact the administrator.';
-      setLoginErrorMsg(msg);
-      toast({ title: 'Account Suspended', description: msg, variant: 'destructive' });
       localStorage.removeItem('pos_account_suspended');
+      navigate('/account-suspended', { replace: true });
     }
-  }, [toast]);
+  }, [navigate]);
 
   const redirectByRole = (role: string) => {
     const lastPath = localStorage.getItem('pos_last_path');
