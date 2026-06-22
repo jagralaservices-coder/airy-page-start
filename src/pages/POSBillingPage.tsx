@@ -395,7 +395,7 @@ export const POSBillingPage: React.FC = () => {
 
     setIsProcessingSale(true);
     try {
-      const order = await directBillPrint(paymentToUse, {
+      const order = await directBillPrint(paymentToUse as any, {
         name: customer.name,
         phone: customer.phone,
         email: customer.email,
