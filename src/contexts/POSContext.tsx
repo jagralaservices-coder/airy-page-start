@@ -1907,7 +1907,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Direct bill print - no KOT, doesn't show in orders (only in recent bills)
   const directBillPrint = async (
-    paymentMethod: 'cash' | 'card' | 'upi' | 'split' | 'due' | 'part' | 'wallet' | 'credit',
+    paymentMethod: 'cash' | 'card' | 'upi' | 'split' | 'due' | 'part' | 'wallet' | 'credit' | 'access',
     customerInfo?: { name?: string; phone?: string; email?: string; address?: string },
     paymentBreakdown?: { method: string; amount: number }[]
   ): Promise<Order | null> => {
