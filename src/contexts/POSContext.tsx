@@ -956,9 +956,12 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const addMenuItems = async (items: Omit<MenuItem, 'id' | 'isAvailable'>[]) => {
     let storeId: string | null = null;
-    if (isStoreLogin) {
+    const storeScopedLogin = hasStoreScopedLogin();
+
+    if (storeScopedLogin) {
       try {
-        storeId = JSON.parse(localStorage.getItem('pos_active_store_data') || '{}')?.id || null;
+        const parsedStore = JSON.parse(localStorage.getItem('pos_active_store_data') || '{}');
+        storeId = parsedStore?.id || parsedStore?.storeId || null;
       } catch {}
       if (!storeId) {
         const active = localStorage.getItem('pos_active_store');
@@ -973,11 +976,11 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         || getActiveStore();
     }
 
-    if (!storeId && !isStoreLogin) {
+    if (!storeId && !storeScopedLogin) {
       toast.error('Please select a store first');
       return false;
     }
-    if (!isStoreLogin && !activeStoreId && storeId) {
+    if (!storeScopedLogin && !activeStoreId && storeId) {
       setActiveStoreIdState(storeId);
       setActiveStoreStorage(storeId);
     }
@@ -999,7 +1002,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logSecurityAction('CREATE', 'menu_items', undefined, undefined, newItemsLocal);
 
     try {
-      if (isStoreLogin && storeId) {
+      if (storeScopedLogin && storeId) {
         const { data: result, error: fnError } = await supabase.functions.invoke('sync-store-data', {
           body: { action: 'save', store_id: storeId, data_type: 'menu_items', store_code: getStoreCode(), items: newItemsLocal.map(item => ({
             id: item.id,
@@ -1029,7 +1032,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             return cleared;
           });
         }
-      } else if (!isStoreLogin) {
+      } else if (!storeScopedLogin) {
         const dbItems = newItemsLocal.map(item => ({
           id: item.id,
           store_id: storeId,
