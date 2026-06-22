@@ -74,6 +74,15 @@ const AuthPage: React.FC = () => {
     }
   }, [isSignup, signupStep]);
 
+  useEffect(() => {
+    if (localStorage.getItem('pos_account_suspended') === 'true') {
+      const msg = 'Your account has been suspended. Please contact the administrator.';
+      setLoginErrorMsg(msg);
+      toast({ title: 'Account Suspended', description: msg, variant: 'destructive' });
+      localStorage.removeItem('pos_account_suspended');
+    }
+  }, [toast]);
+
   const redirectByRole = (role: string) => {
     const lastPath = localStorage.getItem('pos_last_path');
     if (role !== 'admin' && role !== 'super_admin' && lastPath && lastPath.startsWith('/') && !lastPath.startsWith('//') && lastPath !== '/' && lastPath !== '/auth' && lastPath !== '/reset-password' && !lastPath.startsWith('/admin')) {

@@ -155,9 +155,30 @@ export const SupabaseAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
         staff: 4,
         cashier: 9,
       };
-      const roleData = (roleRows || [])
+      const activeRows = (roleRows || []).filter((r: any) => r.is_active === true);
+      const roleData = activeRows
         .slice()
         .sort((a: any, b: any) => (rolePriority[a.role] ?? 99) - (rolePriority[b.role] ?? 99))[0];
+
+      // If user has role rows but none are active => account suspended
+      if (!roleData && (roleRows || []).length > 0) {
+        console.warn('[Auth] Account suspended — signing out');
+        try {
+          localStorage.setItem('pos_account_suspended', 'true');
+        } catch {}
+        localStorage.removeItem('pos_session_active');
+        localStorage.removeItem('pos_user_role_backup');
+        localStorage.removeItem('pos_customer_backup');
+        localStorage.removeItem('pos_store_backup');
+        localStorage.removeItem('pos_session_backup');
+        localStorage.removeItem('pos_user_backup');
+        clearRoleState();
+        await supabase.auth.signOut();
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
+          window.location.href = '/auth';
+        }
+        return null;
+      }
 
       if (roleData) {
         const roleRecord = roleData as unknown as UserRoleData;
