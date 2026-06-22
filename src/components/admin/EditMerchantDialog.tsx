@@ -61,7 +61,14 @@ export default function EditMerchantDialog({ merchant, open, onOpenChange, onSav
     setLoading(true);
     try {
       const [{ data: roleData }, { data: addonsData }, { data: catalogData }] = await Promise.all([
-        supabase.from('user_roles').select('user_id').eq('customer_id', merchant.id).eq('role', 'owner').maybeSingle(),
+        supabase
+          .from('user_roles')
+          .select('user_id')
+          .or(`merchant_id.eq.${merchant.id},customer_id.eq.${merchant.id}`)
+          .eq('role', 'owner')
+          .order('is_active', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
         supabase.from('merchant_addons').select('feature_key').eq('merchant_id', merchant.id).eq('enabled', true),
         supabase.from('feature_catalog').select('feature_key, label, category, included_in').eq('is_active', true).order('category').order('label'),
       ]);
