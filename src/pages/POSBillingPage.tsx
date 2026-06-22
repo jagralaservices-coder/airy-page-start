@@ -312,6 +312,7 @@ export const POSBillingPage: React.FC = () => {
 
   const pendingAccessSaleRef = React.useRef<{ amount: number; subMethod: AccessPaySubMethod } | null>(null);
   const pendingAccessPrintWindowRef = React.useRef<Window | null>(null);
+  const accessSubMethodRef = React.useRef<AccessPaySubMethod | null>(null);
 
   const handleAccessPaymentConfirm = (amount: number, subMethod: AccessPaySubMethod) => {
     handlePaymentSelect('access');
