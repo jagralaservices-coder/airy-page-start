@@ -1009,7 +1009,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             return cleared;
           });
         }
-      } else {
+      } else if (!isStoreLogin) {
         const dbItems = newItemsLocal.map(item => ({
           id: item.id,
           store_id: storeId,
