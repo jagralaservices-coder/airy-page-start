@@ -99,9 +99,10 @@ export const SupabaseAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
     localStorage.removeItem('pos_store_backup');
     clearLegacyLoginState();
     clearRoleState();
-    await supabase.auth.signOut();
-    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
-      window.location.href = '/auth';
+    // Global scope kills sessions on all devices for this user
+    try { await supabase.auth.signOut({ scope: 'global' } as any); } catch { await supabase.auth.signOut(); }
+    if (typeof window !== 'undefined' && window.location.pathname !== '/account-suspended') {
+      window.location.href = '/account-suspended';
     }
   }, [clearLegacyLoginState, clearRoleState]);
 
