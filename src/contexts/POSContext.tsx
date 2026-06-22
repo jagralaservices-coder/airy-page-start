@@ -953,7 +953,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         || getActiveStore();
     }
 
-    if (!storeId) {
+    if (!storeId && !isStoreLogin) {
       toast.error('Please select a store first');
       return false;
     }
@@ -979,7 +979,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logSecurityAction('CREATE', 'menu_items', undefined, undefined, newItemsLocal);
 
     try {
-      if (isStoreLogin) {
+      if (isStoreLogin && storeId) {
         const { data: result, error: fnError } = await supabase.functions.invoke('sync-store-data', {
           body: { action: 'save', store_id: storeId, data_type: 'menu_items', store_code: getStoreCode(), items: newItemsLocal.map(item => ({
             id: item.id,
@@ -1009,7 +1009,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             return cleared;
           });
         }
-      } else {
+      } else if (!isStoreLogin) {
         const dbItems = newItemsLocal.map(item => ({
           id: item.id,
           store_id: storeId,
