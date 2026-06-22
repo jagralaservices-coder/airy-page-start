@@ -218,6 +218,22 @@ export const SupabaseAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
           setCustomer(null);
         }
 
+        // Always check merchant.is_active if user_role has merchant_id (owners/managers)
+        if (roleRecord.merchant_id) {
+          const { data: merchantData, error: merchantError } = await supabase
+            .from('merchants')
+            .select('id, is_active, approval_status')
+            .eq('id', roleRecord.merchant_id)
+            .maybeSingle();
+          if (!merchantError && merchantData) {
+            const approval = String((merchantData as any).approval_status || '').toLowerCase();
+            if ((merchantData as any).is_active === false || ['suspended', 'rejected'].includes(approval)) {
+              await markAccountSuspended();
+              return null;
+            }
+          }
+        }
+
         if (roleRecord.store_id) {
           const { data: storeData, error: storeError } = await supabase
             .from('stores')
