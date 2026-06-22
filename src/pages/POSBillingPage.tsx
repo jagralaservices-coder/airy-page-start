@@ -316,6 +316,7 @@ export const POSBillingPage: React.FC = () => {
 
   const handleAccessPaymentConfirm = (amount: number, subMethod: AccessPaySubMethod) => {
     handlePaymentSelect('access');
+    accessSubMethodRef.current = subMethod;
     // Open print window synchronously while still inside user-gesture context
     // so the browser popup blocker doesn't block it.
     const printWindow = preparePrintWindow();
