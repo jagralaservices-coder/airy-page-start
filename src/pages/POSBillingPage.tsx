@@ -1809,14 +1809,12 @@ export const POSBillingPage: React.FC = () => {
               </button>
               <button
                 onClick={() => setShowMorePayments(true)}
-                disabled={cart.length === 0}
                 className={cn(
                   'h-11 rounded-xl flex items-center justify-center gap-2 border shadow-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] text-xs md:text-sm font-semibold border-border',
-                  ['due', 'part', 'wallet', 'credit'].includes(selectedPayment || '')
-                    ? 'border-primary bg-primary/10 text-primary' 
+                  ['due', 'part', 'wallet', 'credit', 'access'].includes(selectedPayment || '')
+                    ? 'border-primary bg-primary/10 text-primary'
                     : 'hover:border-primary/50',
-                  activeSection === 'payments' && paymentHighlightIndex === 3 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]',
-                  cart.length === 0 && 'opacity-50 cursor-not-allowed'
+                  activeSection === 'payments' && paymentHighlightIndex === 3 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]'
                 )}
               >
                   <MoreHorizontal className="w-4 h-4" />
