@@ -2151,6 +2151,14 @@ export const POSBillingPage: React.FC = () => {
         }}
       />
 
+      {/* Access Payment Dialog */}
+      <AccessPaymentDialog
+        open={showAccessPaymentDialog}
+        onOpenChange={setShowAccessPaymentDialog}
+        defaultAmount={cart.length > 0 ? finalTotal : 0}
+        onConfirm={handleAccessPaymentConfirm}
+      />
+
       {/* It's Paid Confirmation Dialog */}
 
 
