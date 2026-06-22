@@ -52,13 +52,32 @@ serve(async (req) => {
 
     const normalizedEmail = String(email).trim().toLowerCase();
 
+    // Pre-check: does a user with this email already exist?
+    try {
+      const { data: existing } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const dupe = existing?.users?.find(
+        (u: any) => (u.email || "").toLowerCase() === normalizedEmail
+      );
+      if (dupe) {
+        return json({
+          error: `An account with the email "${normalizedEmail}" already exists. Please use a different email address.`,
+        }, 200);
+      }
+    } catch (_) { /* fall through to createUser */ }
+
     const { data: authData, error: authErr } = await admin.auth.admin.createUser({
       email: normalizedEmail,
       password,
       email_confirm: true,
       user_metadata: { full_name: fullName },
     });
-    if (authErr || !authData.user) return json({ error: authErr?.message || "Failed to create user" }, 200);
+    if (authErr || !authData.user) {
+      const msg = authErr?.message || "Failed to create user";
+      const friendly = /already been registered|already exists|duplicate/i.test(msg)
+        ? `An account with the email "${normalizedEmail}" already exists. Please use a different email address.`
+        : msg;
+      return json({ error: friendly }, 200);
+    }
 
     const newUserId = authData.user.id;
 
