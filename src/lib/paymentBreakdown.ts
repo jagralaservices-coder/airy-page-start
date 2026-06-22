@@ -73,7 +73,7 @@ export const getPaymentBreakdownSummary = (order: Order): PaymentBreakdownSummar
   const counts = createEmptyCounts();
   const method = String(order.paymentMethod || '').toLowerCase().trim();
 
-  if (method === 'part') {
+  if (method === 'part' || method === 'access') {
     let rawBreakdown = order.paymentBreakdown || (order as any).payment_breakdown || (order as any).payment_details || (order as any).paymentDetails;
     
     // Parse stringified JSON if needed

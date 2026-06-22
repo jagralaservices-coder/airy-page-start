@@ -935,11 +935,23 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addMenuItems = async (items: Omit<MenuItem, 'id' | 'isAvailable'>[]) => {
-    const storeId = isStoreLogin 
-      ? JSON.parse(localStorage.getItem('pos_active_store_data') || '{}')?.id 
-      : (activeStoreId
-          || localStorage.getItem('owner_selected_store_id')
-          || getActiveStore());
+    let storeId: string | null = null;
+    if (isStoreLogin) {
+      try {
+        storeId = JSON.parse(localStorage.getItem('pos_active_store_data') || '{}')?.id || null;
+      } catch {}
+      if (!storeId) {
+        const active = localStorage.getItem('pos_active_store');
+        if (active) {
+          try { storeId = JSON.parse(active); } catch { storeId = active; }
+        }
+      }
+      if (!storeId) storeId = activeStoreId;
+    } else {
+      storeId = activeStoreId
+        || localStorage.getItem('owner_selected_store_id')
+        || getActiveStore();
+    }
 
     if (!storeId) {
       toast.error('Please select a store first');
