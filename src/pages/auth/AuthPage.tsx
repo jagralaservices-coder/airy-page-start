@@ -131,6 +131,10 @@ const AuthPage: React.FC = () => {
       const { error } = await login(trimmedEmail, trimmedPassword);
       if (error) {
         setIsLoading(false);
+        if (/suspend/i.test(error)) {
+          navigate('/account-suspended', { replace: true });
+          return;
+        }
         setLoginErrorMsg(error);
         toast({ title: t('auth.loginFailed'), description: error, variant: 'destructive' });
         return;
