@@ -812,6 +812,14 @@ export const useAnalytics = (timeRange: TimeRange = 'today', customDateRange?: C
       percentage: total > 0 ? Math.round((paymentTotals.qr.amount / total) * 100) : 0,
     });
 
+    // Access Payment
+    rows.push({
+      method: 'Access Payment',
+      count: paymentTotals.access.count,
+      amount: paymentTotals.access.amount,
+      percentage: total > 0 ? Math.round((paymentTotals.access.amount / total) * 100) : 0,
+    });
+
     // Credit
     rows.push({
       method: 'Credit',
