@@ -40,7 +40,8 @@ import {
   User,
   PackagePlus,
   QrCode,
-  ShoppingBag
+  ShoppingBag,
+  Landmark
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -130,7 +131,7 @@ export const POSBillingPage: React.FC = () => {
   const [showHeldBills, setShowHeldBills] = useState(false);
   const [showQROrders, setShowQROrders] = useState(false);
 
-  const [selectedPayment, setSelectedPayment] = useState<'cash' | 'card' | 'upi' | 'due' | 'part' | 'wallet' | 'credit' | null>(() => {
+  const [selectedPayment, setSelectedPayment] = useState<'cash' | 'card' | 'upi' | 'due' | 'part' | 'wallet' | 'credit' | 'access' | null>(() => {
     return (localStorage.getItem('pos_billing_selected_payment') as any) || null;
   });
   const [activeSection, setActiveSection] = useState<'products' | 'cart' | 'payments' | 'actions'>('products');
@@ -303,7 +304,7 @@ export const POSBillingPage: React.FC = () => {
   const finalTotal = isComplimentary ? 0 : adjustedTotal;
   const roundOff = Math.round(finalTotal) - finalTotal;
 
-  const handlePaymentSelect = (method: 'cash' | 'card' | 'upi' | 'due' | 'part' | 'wallet' | 'credit') => {
+  const handlePaymentSelect = (method: 'cash' | 'card' | 'upi' | 'due' | 'part' | 'wallet' | 'credit' | 'access') => {
     setSelectedPayment(method);
   };
 
@@ -394,7 +395,7 @@ export const POSBillingPage: React.FC = () => {
 
     setIsProcessingSale(true);
     try {
-      const order = await directBillPrint(paymentToUse, {
+      const order = await directBillPrint(paymentToUse as any, {
         name: customer.name,
         phone: customer.phone,
         email: customer.email,
@@ -976,7 +977,7 @@ export const POSBillingPage: React.FC = () => {
           }
         } else if (activeSection === 'payments') {
           if (showMorePayments) {
-            const sheetOptions: ('cash' | 'upi' | 'card' | 'due' | 'part' | 'wallet' | 'credit')[] = ['cash', 'upi', 'card', 'due', 'part', 'wallet', 'credit'];
+            const sheetOptions: ('cash' | 'upi' | 'card' | 'due' | 'part' | 'wallet' | 'credit' | 'access')[] = ['cash', 'upi', 'card', 'due', 'part', 'wallet', 'credit', 'access'];
             const selectedOpt = sheetOptions[sheetPaymentHighlightIndex];
             if (selectedOpt === 'part') {
               setShowMorePayments(false);
@@ -2064,6 +2065,24 @@ export const POSBillingPage: React.FC = () => {
             >
               <Receipt className="w-5 h-5 text-amber-500" />
               <span className="text-sm font-medium">{t('common.credit')}</span>
+            </button>
+
+            {/* Access Payment - counts in sales like cash */}
+            <button
+              onClick={() => {
+                handlePaymentSelect('access' as any);
+                setShowMorePayments(false);
+              }}
+              className={cn(
+                'h-16 rounded-lg flex flex-col items-center justify-center gap-1 border-2 transition-all',
+                selectedPayment === 'access'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border hover:border-primary/50',
+                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 7 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]'
+              )}
+            >
+              <Landmark className="w-5 h-5 text-emerald-600" />
+              <span className="text-sm font-medium">Access Pay</span>
             </button>
           </div>
         </SheetContent>
