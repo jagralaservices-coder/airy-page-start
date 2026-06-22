@@ -714,6 +714,7 @@ export const useAnalytics = (timeRange: TimeRange = 'today', customDateRange?: C
       upi: { amount: 0, count: 0 },
       credit: { amount: 0, count: 0 },
       qr: { amount: 0, count: 0 },
+      access: { amount: 0, count: 0 },
     };
 
     // Process each order
@@ -722,6 +723,26 @@ export const useAnalytics = (timeRange: TimeRange = 'today', customDateRange?: C
       if (method === 'qr') {
         paymentTotals.qr.amount += order.total;
         paymentTotals.qr.count += 1;
+      } else if (method === 'access') {
+        // Access payment: total goes to its own bucket AND to the chosen sub-method
+        paymentTotals.access.amount += order.total;
+        paymentTotals.access.count += 1;
+        const breakdown = getPaymentBreakdownSummary(order);
+        const subTotal = breakdown.amounts.cash + breakdown.amounts.card + breakdown.amounts.upi + breakdown.amounts.credit;
+        if (subTotal > 0) {
+          paymentTotals.cash.amount += breakdown.amounts.cash;
+          paymentTotals.card.amount += breakdown.amounts.card;
+          paymentTotals.upi.amount += breakdown.amounts.upi;
+          paymentTotals.credit.amount += breakdown.amounts.credit;
+          paymentTotals.cash.count += breakdown.counts.cash;
+          paymentTotals.card.count += breakdown.counts.card;
+          paymentTotals.upi.count += breakdown.counts.upi;
+          paymentTotals.credit.count += breakdown.counts.credit;
+        } else {
+          // Fallback: no breakdown stored → put into cash
+          paymentTotals.cash.amount += order.total;
+          paymentTotals.cash.count += 1;
+        }
       } else {
         const breakdown = getPaymentBreakdownSummary(order);
         paymentTotals.cash.amount += breakdown.amounts.cash;
