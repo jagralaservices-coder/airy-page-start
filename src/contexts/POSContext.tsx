@@ -91,7 +91,7 @@ interface POSContextType {
   placeOrder: (paymentMethod: 'cash' | 'card' | 'upi' | 'split' | 'due' | 'part' | 'wallet' | 'credit') => Promise<Order | null> | Order | null;
   createKOTOrder: () => Promise<Order | null>; // Create order for KOT only (no sales)
   printBillForOrder: (orderId: string, paymentMethod: 'cash' | 'card' | 'upi' | 'split' | 'due' | 'part' | 'wallet' | 'credit', customerInfo?: { name?: string; phone?: string; email?: string; address?: string }, paymentBreakdown?: { method: string; amount: number }[]) => Promise<Order | null>; // Print bill for existing KOT order
-  directBillPrint: (paymentMethod: 'cash' | 'card' | 'upi' | 'split' | 'due' | 'part' | 'wallet' | 'credit', customerInfo?: { name?: string; phone?: string; email?: string; address?: string }, paymentBreakdown?: { method: string; amount: number }[]) => Promise<Order | null>; // Direct bill without KOT (not in orders)
+  directBillPrint: (paymentMethod: 'cash' | 'card' | 'upi' | 'split' | 'due' | 'part' | 'wallet' | 'credit' | 'access', customerInfo?: { name?: string; phone?: string; email?: string; address?: string }, paymentBreakdown?: { method: string; amount: number }[]) => Promise<Order | null>; // Direct bill without KOT (not in orders)
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
   updateOrderPaymentMethod: (orderId: string, paymentMethod: Order['paymentMethod']) => void;
   cancelOrder: (orderId: string, reason?: string) => void;
@@ -1907,7 +1907,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Direct bill print - no KOT, doesn't show in orders (only in recent bills)
   const directBillPrint = async (
-    paymentMethod: 'cash' | 'card' | 'upi' | 'split' | 'due' | 'part' | 'wallet' | 'credit',
+    paymentMethod: 'cash' | 'card' | 'upi' | 'split' | 'due' | 'part' | 'wallet' | 'credit' | 'access',
     customerInfo?: { name?: string; phone?: string; email?: string; address?: string },
     paymentBreakdown?: { method: string; amount: number }[]
   ): Promise<Order | null> => {

@@ -114,7 +114,7 @@ export interface Order {
   customerPhone?: string;
   customerEmail?: string;
   customerAddress?: string;
-  paymentMethod?: 'cash' | 'card' | 'upi' | 'split' | 'due' | 'part' | 'wallet' | 'credit';
+  paymentMethod?: 'cash' | 'card' | 'upi' | 'split' | 'due' | 'part' | 'wallet' | 'credit' | 'access';
   paymentBreakdown?: Record<string, number>; // For 'part' payments: { cash: amount, card: amount, upi: amount, credit: amount }
   createdAt: Date;
   kotPrinted: boolean;

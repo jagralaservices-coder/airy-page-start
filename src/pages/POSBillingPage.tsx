@@ -312,9 +312,11 @@ export const POSBillingPage: React.FC = () => {
 
   const pendingAccessSaleRef = React.useRef<{ amount: number; subMethod: AccessPaySubMethod } | null>(null);
   const pendingAccessPrintWindowRef = React.useRef<Window | null>(null);
+  const accessSubMethodRef = React.useRef<AccessPaySubMethod | null>(null);
 
   const handleAccessPaymentConfirm = (amount: number, subMethod: AccessPaySubMethod) => {
     handlePaymentSelect('access');
+    accessSubMethodRef.current = subMethod;
     // Open print window synchronously while still inside user-gesture context
     // so the browser popup blocker doesn't block it.
     const printWindow = preparePrintWindow();
@@ -444,12 +446,15 @@ export const POSBillingPage: React.FC = () => {
 
     setIsProcessingSale(true);
     try {
+      const accessBreakdown = paymentToUse === 'access' && accessSubMethodRef.current
+        ? [{ method: accessSubMethodRef.current, amount: cartTotal }]
+        : undefined;
       const order = await directBillPrint(paymentToUse as any, {
         name: customer.name,
         phone: customer.phone,
         email: customer.email,
         address: [customer.address, customer.city, customer.state, customer.pincode].filter(Boolean).join(', '),
-      }, paymentToUse === 'part' ? partPaymentDetails : undefined);
+      }, paymentToUse === 'part' ? partPaymentDetails : accessBreakdown);
 
       if (order) {
         if (action === 'print') {
