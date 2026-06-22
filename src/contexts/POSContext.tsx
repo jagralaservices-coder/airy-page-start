@@ -201,13 +201,31 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem('pos_discount', String(discount));
   }, [discount]);
 
+  const hasStoreScopedLogin = useCallback((): boolean => {
+    if (isStoreLogin) return true;
+    if (localStorage.getItem('pos_is_store_login') === 'true') return true;
+    if (localStorage.getItem('pos_store_code')) return true;
+    if (localStorage.getItem('pos_staff_session') || localStorage.getItem('logged_in_staff')) return true;
+    try {
+      const storeData = localStorage.getItem('pos_active_store_data');
+      if (storeData) {
+        const parsed = JSON.parse(storeData);
+        return Boolean(parsed?.storeCode || parsed?.store_code);
+      }
+    } catch {}
+    return false;
+  }, [isStoreLogin]);
+
   // Helper to get store_code for edge function auth
   const getStoreCode = useCallback((): string | null => {
+    const directStoreCode = localStorage.getItem('pos_store_code');
+    if (directStoreCode) return directStoreCode;
     try {
       const storeData = localStorage.getItem('pos_active_store_data');
       if (storeData) {
         const parsed = JSON.parse(storeData);
         if (parsed?.storeCode) return parsed.storeCode;
+        if (parsed?.store_code) return parsed.store_code;
       }
     } catch {}
     return null;
@@ -216,8 +234,10 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
+        const storeScopedLogin = localStorage.getItem('pos_is_store_login') === 'true' || Boolean(localStorage.getItem('pos_store_code'));
+        if (storeScopedLogin || event !== 'SIGNED_IN') return;
         setIsStoreLogin(false);
         localStorage.removeItem('store_login');
         localStorage.removeItem('pos_store_session');
