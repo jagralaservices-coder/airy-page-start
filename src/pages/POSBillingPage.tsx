@@ -50,6 +50,7 @@ import { toast } from '@/hooks/use-toast';
 import { SplitBillDialog } from '@/components/pos/SplitBillDialog';
 import { DiscountDialog } from '@/components/pos/DiscountDialog';
 import { PartPaymentDialog } from '@/components/pos/PartPaymentDialog';
+import { AccessPaymentDialog, AccessPaySubMethod } from '@/components/pos/AccessPaymentDialog';
 import {
   Select,
   SelectContent,
