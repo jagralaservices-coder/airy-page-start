@@ -101,6 +101,7 @@ serve(async (req) => {
 
     const { error: cErr } = await admin.from("customers").insert({
       id: merchant.id,
+      name: businessName,
       owner_user_id: newUserId,
       business_name: businessName,
       owner_name: fullName,
