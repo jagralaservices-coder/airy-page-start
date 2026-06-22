@@ -953,7 +953,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         || getActiveStore();
     }
 
-    if (!storeId) {
+    if (!storeId && !isStoreLogin) {
       toast.error('Please select a store first');
       return false;
     }
