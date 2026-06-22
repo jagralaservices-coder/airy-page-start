@@ -130,6 +130,10 @@ export default function EditMerchantDialog({ merchant, open, onOpenChange, onSav
       const emailChanged = form.owner_email !== merchant.owner_email;
       const pwdChanged = form.new_password.length > 0;
 
+      if ((emailChanged || pwdChanged) && !userId) {
+        throw new Error('Could not find the owner user account for this merchant. Email/password cannot be updated.');
+      }
+
       if ((emailChanged || pwdChanged) && userId) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) throw new Error('No active session');
