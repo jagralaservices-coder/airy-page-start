@@ -979,7 +979,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logSecurityAction('CREATE', 'menu_items', undefined, undefined, newItemsLocal);
 
     try {
-      if (isStoreLogin) {
+      if (isStoreLogin && storeId) {
         const { data: result, error: fnError } = await supabase.functions.invoke('sync-store-data', {
           body: { action: 'save', store_id: storeId, data_type: 'menu_items', store_code: getStoreCode(), items: newItemsLocal.map(item => ({
             id: item.id,
