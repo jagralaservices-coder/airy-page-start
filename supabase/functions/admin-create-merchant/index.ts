@@ -30,7 +30,7 @@ serve(async (req) => {
     });
 
     const { data: { user }, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !user) return json({ error: "Unauthorized" }, 401);
+    if (userErr || !user) return json({ error: "Unauthorized" }, 200);
 
     const { data: roleRow } = await admin
       .from("user_roles")
@@ -38,7 +38,7 @@ serve(async (req) => {
       .eq("user_id", user.id)
       .in("role", ["admin", "super_admin"])
       .maybeSingle();
-    if (!roleRow) return json({ error: "Only admins can create merchants" }, 403);
+    if (!roleRow) return json({ error: "Only admins can create merchants" }, 200);
 
     const body = await req.json();
     const {
@@ -47,7 +47,7 @@ serve(async (req) => {
     } = body;
 
     if (!fullName || !email || !businessName || !phone || !password) {
-      return json({ error: "Missing required fields" }, 400);
+      return json({ error: "Missing required fields" }, 200);
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
@@ -58,7 +58,7 @@ serve(async (req) => {
       email_confirm: true,
       user_metadata: { full_name: fullName },
     });
-    if (authErr || !authData.user) return json({ error: authErr?.message || "Failed to create user" }, 400);
+    if (authErr || !authData.user) return json({ error: authErr?.message || "Failed to create user" }, 200);
 
     const newUserId = authData.user.id;
 
@@ -77,7 +77,26 @@ serve(async (req) => {
 
     if (mErr) {
       await admin.auth.admin.deleteUser(newUserId);
-      return json({ error: mErr.message }, 400);
+      return json({ error: mErr.message }, 200);
+    }
+
+    const { error: cErr } = await admin.from("customers").insert({
+      id: merchant.id,
+      owner_user_id: newUserId,
+      business_name: businessName,
+      owner_name: fullName,
+      owner_email: normalizedEmail,
+      business_type: businessType || "retail",
+      subscription_plan: plan || "basic",
+      subscription_tier: plan || "basic",
+      is_active: true,
+      approval_status: "approved"
+    });
+
+    if (cErr) {
+      await admin.from("merchants").delete().eq("id", merchant.id);
+      await admin.auth.admin.deleteUser(newUserId);
+      return json({ error: cErr.message }, 200);
     }
 
     // Replace any default role row created by handle_new_user trigger
@@ -86,16 +105,17 @@ serve(async (req) => {
       user_id: newUserId,
       role: "owner",
       merchant_id: merchant.id,
+      customer_id: merchant.id,
       is_active: true,
     });
     if (rErr) {
       await admin.from("merchants").delete().eq("id", merchant.id);
       await admin.auth.admin.deleteUser(newUserId);
-      return json({ error: rErr.message }, 400);
+      return json({ error: rErr.message }, 200);
     }
 
     return json({ success: true, merchant_id: merchant.id });
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 500);
+    return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 200);
   }
 });
