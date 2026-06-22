@@ -295,6 +295,9 @@ const AppRoutes = () => {
       
       {/* Reset Password */}
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+      {/* Account Suspended */}
+      <Route path="/account-suspended" element={<AccountSuspendedPage />} />
       
       {/* Public QR Menu for customers */}
       <Route path="/menu/:storeCode" element={<CustomerMenuPage />} />
