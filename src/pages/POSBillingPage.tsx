@@ -145,6 +145,7 @@ export const POSBillingPage: React.FC = () => {
   const [showDiscountDialog, setShowDiscountDialog] = useState(false);
   const [showMorePayments, setShowMorePayments] = useState(false);
   const [showPartPaymentDialog, setShowPartPaymentDialog] = useState(false);
+  const [showAccessPaymentDialog, setShowAccessPaymentDialog] = useState(false);
   const [partPaymentDetails, setPartPaymentDetails] = useState<{ method: string; amount: number }[]>([]);
   const [discountReason, setDiscountReason] = useState('');
   const [deliveryCharge, setDeliveryCharge] = useState(() => {
