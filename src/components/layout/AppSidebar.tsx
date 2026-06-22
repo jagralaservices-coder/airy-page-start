@@ -115,12 +115,6 @@ export const AppSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
       featureKey: 'teamChat'
     },
     { 
-      path: '/addons', 
-      icon: Sparkles, 
-      label: 'Addons',
-      allowedRoles: ['admin', 'owner']
-    },
-    { 
       path: '/settings', 
       icon: Settings, 
       label: 'Settings',

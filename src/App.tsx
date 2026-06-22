@@ -514,7 +514,7 @@ const AppRoutes = () => {
       <Route path="/prd" element={<PRDPage />} />
       <Route path="/upgrade-plan" element={<UpgradePlanPage />} />
       <Route path="/addons" element={
-        <ProtectedRoute allowedRoles={['super_admin', 'admin', 'owner']}><AddonsMarketplacePage /></ProtectedRoute>
+        <ProtectedRoute allowedRoles={['super_admin', 'admin']}><AddonsMarketplacePage /></ProtectedRoute>
       } />
       <Route path="*" element={<NotFound />} />
     </Routes>
