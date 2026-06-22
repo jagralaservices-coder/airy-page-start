@@ -310,6 +310,40 @@ export const POSBillingPage: React.FC = () => {
     setSelectedPayment(method);
   };
 
+  const pendingAccessSaleRef = React.useRef<{ amount: number; subMethod: AccessPaySubMethod } | null>(null);
+
+  const handleAccessPaymentConfirm = (amount: number, subMethod: AccessPaySubMethod) => {
+    // Add a synthetic Access Payment line item, then trigger sale after cart updates.
+    const accessItem: MenuItem = {
+      id: `access-pay-${Date.now()}`,
+      name: `Access Payment (${subMethod.toUpperCase()})`,
+      price: amount,
+      category: 'access',
+      categoryId: activeCategory || 'access',
+      description: 'Access payment entry',
+      image: '',
+      available: true,
+      preparationTime: 999, // dynamic price item
+    } as any;
+    pendingAccessSaleRef.current = { amount, subMethod };
+    handlePaymentSelect('access');
+    addToCart(accessItem, amount, 1);
+  };
+
+  // When the pending access sale flag is set and cart updates, trigger completeSale.
+  useEffect(() => {
+    if (pendingAccessSaleRef.current && cart.length > 0) {
+      const pending = pendingAccessSaleRef.current;
+      pendingAccessSaleRef.current = null;
+      // Defer to next tick so latest cart-derived totals are used.
+      setTimeout(() => {
+        completeSale('print', 'access');
+      }, 50);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart.length]);
+
+
   const getStoreId = (): string => {
     try {
       const storeData = localStorage.getItem('pos_active_store_data');
