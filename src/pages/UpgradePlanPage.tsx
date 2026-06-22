@@ -167,8 +167,6 @@ const UpgradePlanPage: React.FC = () => {
 
         <p className="text-center text-xs text-muted-foreground mt-6">
           All activations are processed manually by your administrator. You'll be notified when approved.
-          <br /> Want a specific feature?{' '}
-          <Link to="/addons" className="underline">Browse the Addons catalog</Link>.
         </p>
       </div>
     </div>
