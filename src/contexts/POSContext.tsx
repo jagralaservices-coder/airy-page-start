@@ -4,8 +4,23 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { showLowStockAlert, showOutOfStockAlert } from '@/lib/notifications';
 import { formatQuantityDisplay, convertToBaseUnit } from '@/lib/inventoryUtils';
-import { useOrderSync } from '@/hooks/useOrderSync';
-import { useStoreDataSync } from '@/hooks/useStoreDataSync';
+import { useCloudData } from '@/hooks/useCloudData';
+import { 
+  useSaveOrderMutation, 
+  useSaveCloudDataMutation, 
+  useDeleteCloudDataMutation, useUpdateCloudDataMutation 
+} from '@/hooks/useCloudMutations';
+import { 
+  dbToLocalMenuItem, 
+  dbToLocalCategory, 
+  dbToLocalHeldBill, 
+  dbToLocalOrder,
+  dbToLocalInventory,
+  dbToLocalExpense,
+  dbToLocalCustomer,
+  dbToLocalCreditEntry,
+  dbToLocalCreditPayment
+} from '@/lib/transformers';
 import { useStoreInitializer } from '@/hooks/useStoreInitializer';
 import {
   MenuItem,
@@ -250,276 +265,65 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Order cloud sync
-  const { saveOrderToCloud, startPeriodicSync: startOrderSync } = useOrderSync();
-
-  // Store data cloud sync (inventory, expenses, held bills, settings)
-  const { startPeriodicSync: startStoreDataSync, saveCreditEntryToCloud } = useStoreDataSync();
-
-  // Stable refs for sync functions to prevent infinite loop
-  const startOrderSyncRef = useRef(startOrderSync);
-  const startStoreDataSyncRef = useRef(startStoreDataSync);
+  // --- Cloud Data React Query Bridges ---
+  const { data: menuItemsData } = useCloudData('menu_items', (data) => {
+    const ingredients = data?.ingredients || [];
+    const variations = data?.variations || [];
+    return (data?.items || []).map((item: any) => dbToLocalMenuItem(item, ingredients, variations));
+  }, []);
 
   useEffect(() => {
-    startOrderSyncRef.current = startOrderSync;
-  }, [startOrderSync]);
+    if (menuItemsData) setMenuItemsState(menuItemsData);
+  }, [menuItemsData]);
+
+  const { data: categoriesData } = useCloudData('categories', (data) => {
+    return (data?.items || []).map(dbToLocalCategory);
+  }, []);
 
   useEffect(() => {
-    startStoreDataSyncRef.current = startStoreDataSync;
-  }, [startStoreDataSync]);
+    if (categoriesData) setCategoriesState(categoriesData);
+  }, [categoriesData]);
+
+  const { data: ordersData } = useCloudData('orders', (data) => {
+    return (data?.orders || []).map(dbToLocalOrder);
+  }, []);
+
+  useEffect(() => {
+    if (ordersData) setOrdersState(ordersData);
+  }, [ordersData]);
+
+  const { data: heldBillsData } = useCloudData('held_bills', (data) => {
+    return (data?.items || []).map(dbToLocalHeldBill);
+  }, []);
+
+  useEffect(() => {
+    if (heldBillsData) setHeldBillsState(heldBillsData);
+  }, [heldBillsData]);
+
+  const { data: tablesData } = useCloudData('tables', (data) => {
+    return (data?.items || []) as Table[];
+  }, []);
+
+  useEffect(() => {
+    if (tablesData) setTablesState(tablesData);
+  }, [tablesData]);
+
+  // Mutations
+  const saveOrderMutation = useSaveOrderMutation();
+  const saveMenuItemsMutation = useSaveCloudDataMutation('menu_items');
+  const deleteMenuItemsMutation = useDeleteCloudDataMutation('menu_items');
+    const updateMenuItemsMutation = useUpdateCloudDataMutation('menu_items');
+  const saveCategoriesMutation = useSaveCloudDataMutation('categories');
+  const saveTablesMutation = useSaveCloudDataMutation('tables');
+  const saveHeldBillsMutation = useSaveCloudDataMutation('held_bills');
+  const deleteHeldBillsMutation = useDeleteCloudDataMutation('held_bills');
+  const saveCreditLedgerMutation = useSaveCloudDataMutation('credit_ledger');
 
   // Store initializer for first-time login full download
   const { initializeStoreSession } = useStoreInitializer();
 
   // Fetch menu items from database based on active store (with ingredients)
-  const fetchMenuItems = useCallback(async (storeId: string | null) => {
-    if (!storeId) {
-      setMenuItemsState([]);
-      return;
-    }
-
-    try {
-      let data: any[] | null = null;
-      let ingredientsData: any[] = [];
-      let variationsData: any[] = [];
-
-      if (isStoreLogin) {
-        // Use edge function for store login (no auth session)
-        const { data: result, error: fnError } = await supabase.functions.invoke('sync-store-data', {
-          body: { action: 'fetch', store_id: storeId, data_type: 'menu_items', store_code: getStoreCode() }
-        });
-        if (fnError || result?.error) {
-          console.error('Error fetching menu items via edge function:', fnError || result?.error);
-          toast.error('Failed to load menu items');
-          return;
-        }
-        data = result?.items || [];
-        ingredientsData = result?.ingredients || [];
-        variationsData = result?.variations || [];
-      } else {
-        // Direct DB access for authenticated users
-        const { data: dbData, error } = await supabase
-          .from('menu_items')
-          .select('*')
-          .eq('store_id', storeId);
-
-        if (error) {
-          console.error('Error fetching menu items:', error);
-          toast.error('Failed to load menu items');
-          return;
-        }
-        data = dbData;
-      }
-
-      // Fetch all ingredients for this store's menu items
-      const menuItemIds = (data || []).map(item => item.id);
-      let ingredientsMap: Record<string, MenuItemIngredient[]> = {};
-      let variationsMap: Record<string, MenuItem['variations']> = {};
-      
-      if (menuItemIds.length > 0) {
-        // For store login, ingredientsData and variationsData are already fetched
-        if (isStoreLogin) {
-          ingredientsData.forEach((ing: any) => {
-            if (!ingredientsMap[ing.menu_item_id]) {
-              ingredientsMap[ing.menu_item_id] = [];
-            }
-            ingredientsMap[ing.menu_item_id].push({
-              id: ing.id,
-              inventoryItemId: ing.inventory_item_id,
-              quantityRequired: Number(ing.quantity_required),
-              unit: ing.unit
-            });
-          });
-          variationsData.forEach((variation: any) => {
-            if (!variationsMap[variation.menu_item_id]) {
-              variationsMap[variation.menu_item_id] = [];
-            }
-            variationsMap[variation.menu_item_id]!.push({
-              id: variation.id,
-              menuItemId: variation.menu_item_id,
-              name: variation.name,
-              sku: variation.sku || undefined,
-              price: Number(variation.price),
-              isAvailable: variation.is_available,
-              stock: variation.stock || undefined,
-              sortOrder: variation.sort_order,
-              unit: variation.unit || undefined,
-            });
-          });
-        } else {
-          // Fetch ingredients directly for authenticated users
-          const { data: ingsData, error: ingredientsError } = await supabase
-            .from('menu_item_ingredients')
-            .select('*')
-            .in('menu_item_id', menuItemIds);
-
-          if (!ingredientsError && ingsData) {
-            ingsData.forEach(ing => {
-              if (!ingredientsMap[ing.menu_item_id]) {
-                ingredientsMap[ing.menu_item_id] = [];
-              }
-              ingredientsMap[ing.menu_item_id].push({
-                id: ing.id,
-                inventoryItemId: ing.inventory_item_id,
-                quantityRequired: Number(ing.quantity_required),
-                unit: ing.unit
-              });
-            });
-          }
-
-          // Fetch variations
-          const { data: varsData, error: variationsError } = await supabase
-            .from('menu_item_variations')
-            .select('*')
-            .in('menu_item_id', menuItemIds)
-            .order('sort_order', { ascending: true });
-
-          if (!variationsError && varsData) {
-            varsData.forEach(variation => {
-              if (!variationsMap[variation.menu_item_id]) {
-                variationsMap[variation.menu_item_id] = [];
-              }
-              variationsMap[variation.menu_item_id]!.push({
-                id: variation.id,
-                menuItemId: variation.menu_item_id,
-                name: variation.name,
-                sku: variation.sku || undefined,
-                price: Number(variation.price),
-                isAvailable: variation.is_available,
-                stock: variation.stock || undefined,
-                sortOrder: variation.sort_order,
-                unit: variation.unit || undefined,
-              });
-            });
-          }
-        }
-      }
-
-      const items: MenuItem[] = (data || []).map(item => ({
-        id: item.id,
-        name: item.name,
-        nameHindi: item.name_hindi || undefined,
-        price: Number(item.price),
-        category: item.category,
-        image: item.image_url || undefined,
-        isAvailable: item.is_available,
-        preparationTime: item.preparation_time || undefined,
-        stock: item.stock || undefined,
-        linkedInventoryId: item.linked_inventory_id || undefined,
-        gramagePerUnit: item.gramage_per_unit ? Number(item.gramage_per_unit) : undefined,
-        ingredients: ingredientsMap[item.id] || [],
-        sku: (item as Record<string, unknown>).sku as string | undefined,
-        barcode: (item as Record<string, unknown>).barcode as string | undefined,
-        variations: variationsMap[item.id] || [],
-      }));
-
-      // Safe merge menu items with existing local menu items
-      const localMenuItems = getMenuItems();
-      let mergedItems = localMenuItems;
-      
-      if (items && items.length > 0) {
-        mergedItems = safeMerge(localMenuItems, items);
-        
-        // Remove default items "1", "2", "3" if real store items have been fetched/synced from the cloud
-        const hasRealItems = mergedItems.some(i => i.id !== '1' && i.id !== '2' && i.id !== '3');
-        if (hasRealItems) {
-          mergedItems = mergedItems.filter(i => i.id !== '1' && i.id !== '2' && i.id !== '3');
-        }
-        setMenuItems(mergedItems);
-      }
-      setMenuItemsState(mergedItems);
-
-      // Sync categories from menu items AND save to DB
-      const uniqueCategoryIds = [...new Set(mergedItems.map(item => item.category).filter(Boolean))];
-      
-      const menuCategories: Category[] = uniqueCategoryIds.map(catId => ({
-        id: catId,
-        name: catId.charAt(0).toUpperCase() + catId.slice(1).replace(/-/g, ' '),
-        icon: '📦',
-        color: 'cat-food'
-      }));
-
-      if (menuCategories.length > 0) {
-        const localCats = getCategories();
-        let mergedCats = safeMerge(localCats, menuCategories);
-        const hasRealCats = mergedCats.some(c => c.id !== 'general' && c.id !== 'grocery' && c.id !== 'electronics' && c.id !== 'hardware' && c.id !== 'food' && c.id !== 'stationery');
-        if (hasRealCats) {
-          mergedCats = mergedCats.filter(c => c.id !== 'general' && c.id !== 'grocery' && c.id !== 'electronics' && c.id !== 'hardware' && c.id !== 'food' && c.id !== 'stationery');
-        }
-        setCategories(mergedCats);
-        setCategoriesState(mergedCats);
-
-        // Save categories to DB
-        const stId = isStoreLogin 
-          ? JSON.parse(localStorage.getItem('pos_active_store_data') || '{}')?.id 
-          : storeId;
-        if (stId) {
-          try {
-            if (isStoreLogin) {
-              await supabase.functions.invoke('sync-store-data', {
-                body: { action: 'save', store_id: stId, data_type: 'categories', store_code: getStoreCode(), items: menuCategories }
-              });
-            } else {
-              // Direct DB: delete and re-insert
-              await supabase.from('store_categories').delete().eq('store_id', stId);
-              if (menuCategories.length > 0) {
-                await supabase.from('store_categories').insert(
-                  menuCategories.map((c, idx) => ({
-                    store_id: stId,
-                    category_id: c.id,
-                    name: c.name,
-                    icon: c.icon,
-                    color: c.color,
-                    sort_order: idx,
-                  }))
-                );
-              }
-            }
-          } catch (e) {
-            console.error('Failed to save categories to DB:', e);
-          }
-        }
-      }
-
-      // Check for low stock items
-      const lowStock = items.filter(item => {
-        if (item.stockAlertThreshold !== undefined && item.stock !== undefined) {
-          return item.stock <= item.stockAlertThreshold && item.stock > 0;
-        }
-        return false;
-      });
-
-      const outOfStock = items.filter(item => item.stock === 0);
-
-      if (lowStock.length > 0) {
-        toast.warning(`${lowStock.length} items have low stock!`, {
-          description: lowStock.slice(0, 3).map(i => `${i.name} (${i.stock})`).join(', ')
-        });
-        
-        if (localStorage.getItem('push_notifications_enabled') === 'true') {
-          showLowStockAlert(lowStock.map(i => ({ name: i.name, stock: i.stock || 0 })));
-        }
-      }
-
-      if (outOfStock.length > 0 && localStorage.getItem('push_notifications_enabled') === 'true') {
-        showOutOfStockAlert(outOfStock.map(i => ({ name: i.name })));
-      }
-    } catch (error) {
-      console.error('Error fetching menu items:', error);
-      // Offline fallback: load local storage items so UI remains functional
-      const localMenuItems = getMenuItems();
-      setMenuItemsState(localMenuItems);
-      
-      const uniqueCategoryIds = [...new Set(localMenuItems.map(item => item.category).filter(Boolean))];
-      const menuCategories: Category[] = uniqueCategoryIds.map(catId => ({
-        id: catId,
-        name: catId.charAt(0).toUpperCase() + catId.slice(1).replace(/-/g, ' '),
-        icon: '📦',
-        color: 'cat-food'
-      }));
-      setCategoriesState(menuCategories);
-    }
-  }, [isStoreLogin]);
+  const fetchMenuItems = useCallback(async (storeId: string | null) => {}, []);
 
   // Validate and sync store data from database
   const validateStoreLogin = useCallback(async () => {
@@ -789,43 +593,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
   }, [isStoreLogin, validateStoreLogin]);
 
-  // Start periodic order sync with cloud
-  useEffect(() => {
-    const storeId = isStoreLogin 
-      ? JSON.parse(localStorage.getItem('pos_active_store_data') || '{}')?.id 
-      : activeStoreId;
-      
-    if (!storeId) return;
-
-    const cleanup = startOrderSyncRef.current(
-      () => getOrders(),
-      (syncedOrders) => setOrdersState(syncedOrders)
-    );
-    return cleanup;
-  }, [activeStoreId, isStoreLogin]);
-
-  // Start periodic store data sync (inventory, expenses, held bills, tables, settings, menu items, categories)
-  useEffect(() => {
-    const storeId = isStoreLogin 
-      ? JSON.parse(localStorage.getItem('pos_active_store_data') || '{}')?.id 
-      : activeStoreId;
-      
-    if (!storeId) return;
-
-    const cleanup = startStoreDataSyncRef.current(
-      () => getInventory(),
-      () => getExpenses(),
-      () => getHeldBills(),
-      (inv) => { setInventory(inv); },
-      (exp) => { setExpenses(exp); },
-      (hb) => { setHeldBillsState(hb); setHeldBills(hb); },
-      () => getTables(),
-      (tbl) => { setTablesState(tbl); setTables(tbl); },
-      (menu) => { setMenuItemsState(menu); },
-      (cats) => { setCategoriesState(cats); },
-    );
-    return cleanup;
-  }, [activeStoreId, isStoreLogin]);
+  
 
   // Fetch menu items and initialize store when active store changes
   useEffect(() => {
@@ -956,7 +724,18 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const addMenuItems = async (items: Omit<MenuItem, 'id' | 'isAvailable'>[]) => {
     let storeId: string | null = null;
-    const storeScopedLogin = hasStoreScopedLogin();
+    
+    // Check role explicitly to ensure we don't block store managers
+    let isManager = false;
+    try {
+      const roleStr = localStorage.getItem('pos_user_role_backup');
+      if (roleStr) {
+        const parsed = JSON.parse(roleStr);
+        if (parsed.role === 'store_manager' || parsed.role === 'staff') isManager = true;
+      }
+    } catch {}
+    
+    const storeScopedLogin = hasStoreScopedLogin() || isManager;
 
     if (storeScopedLogin) {
       try {
@@ -1778,7 +1557,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const updatedOrders = orders.map(o => o.id === existingOrder.id ? updatedOrder : o);
         setOrdersState(updatedOrders);
         setOrders(updatedOrders);
-        saveOrderToCloud(updatedOrder);
+        saveOrderMutation.mutateAsync([]);
         logSecurityAction('MERGE_KOT_ORDER', 'orders', updatedOrder.id, undefined, updatedOrder);
 
         toast.success(`Items merged into Table ${selectedTable.number} order`);
@@ -1807,7 +1586,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     addOrderToStorage(order);
-    saveOrderToCloud(order);
+    saveOrderMutation.mutateAsync([]);
     logSecurityAction('CREATE_KOT_ORDER', 'orders', order.id, undefined, order);
     setOrdersState(getOrders());
 
@@ -1854,7 +1633,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // Try to save to cloud, but don't block bill printing if it fails (will sync later)
     try {
-      const saveSuccess = await saveOrderToCloud(updatedOrder);
+      const saveSuccess = await saveOrderMutation.mutateAsync([]);
       if (!saveSuccess) {
         console.warn('[POS] Cloud sync failed - order saved locally, will retry later');
       }
@@ -1881,10 +1660,12 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const finalCustomerName = (customerInfo?.name || order.customerName || 'Walk-in Customer').trim();
     const finalCustomerPhone = (customerInfo?.phone || order.customerPhone || '').trim() || null;
 
-    if ((paymentMethod === 'due' || paymentMethod === 'credit') && activeStoreId) {
+    const resolvedStoreId = activeStoreId || localStorage.getItem('pos_active_store') || JSON.parse(localStorage.getItem('pos_active_store_data') || '{}')?.id;
+
+    if ((paymentMethod === 'due' || paymentMethod === 'credit') && resolvedStoreId) {
       const creditEntry: CreditEntry = {
         id: generateId(),
-        store_id: activeStoreId,
+        store_id: resolvedStoreId,
         customer_name: finalCustomerName,
         customer_phone: finalCustomerPhone,
         bill_number: billNumber,
@@ -1901,19 +1682,19 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       try {
         const currentLedger = getCreditLedger();
         setCreditLedger([...currentLedger, creditEntry]);
-        await saveCreditEntryToCloud([creditEntry]);
+        await saveCreditLedgerMutation.mutateAsync();
       } catch (e) {
         console.error('[CreditLedger] insert failed:', e);
       }
     }
 
     // For part payments, create credit ledger entry for credit portion if > 0
-    if (paymentMethod === 'part' && paymentBreakdown && activeStoreId) {
+    if (paymentMethod === 'part' && paymentBreakdown && resolvedStoreId) {
       const creditPortion = paymentBreakdown.find(p => p.method.toLowerCase() === 'credit' || p.method.toLowerCase() === 'due');
       if (creditPortion && creditPortion.amount > 0) {
         const creditEntry: CreditEntry = {
           id: generateId(),
-          store_id: activeStoreId,
+          store_id: resolvedStoreId,
           customer_name: finalCustomerName,
           customer_phone: finalCustomerPhone,
           bill_number: billNumber,
@@ -1930,7 +1711,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         try {
           const currentLedger = getCreditLedger();
           setCreditLedger([...currentLedger, creditEntry]);
-          await saveCreditEntryToCloud([creditEntry]);
+          await saveCreditLedgerMutation.mutateAsync();
         } catch (e) {
           console.error('[CreditLedger] insert failed for part payment credit:', e);
         }
@@ -1998,7 +1779,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // Try to save to cloud, but don't block bill printing if it fails (will sync later)
     try {
-      const saveSuccess = await saveOrderToCloud(order);
+      const saveSuccess = await saveOrderMutation.mutateAsync([]);
       if (!saveSuccess) {
         console.warn('[POS] Cloud sync failed - order saved locally, will retry later');
       }
@@ -2025,11 +1806,13 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const finalCustomerName = (customerInfo?.name || 'Walk-in Customer').trim();
     const finalCustomerPhone = (customerInfo?.phone || '').trim() || null;
 
+    const resolvedStoreId = activeStoreId || localStorage.getItem('pos_active_store') || JSON.parse(localStorage.getItem('pos_active_store_data') || '{}')?.id;
+
     // Auto-create Credit Ledger entry for due/credit sales
-    if ((paymentMethod === 'due' || paymentMethod === 'credit') && activeStoreId) {
+    if ((paymentMethod === 'due' || paymentMethod === 'credit') && resolvedStoreId) {
       const creditEntry: CreditEntry = {
         id: generateId(),
-        store_id: activeStoreId,
+        store_id: resolvedStoreId,
         customer_name: finalCustomerName,
         customer_phone: finalCustomerPhone,
         bill_number: billNumber,
@@ -2046,19 +1829,19 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       try {
         const currentLedger = getCreditLedger();
         setCreditLedger([...currentLedger, creditEntry]);
-        await saveCreditEntryToCloud([creditEntry]);
+        await saveCreditLedgerMutation.mutateAsync();
       } catch (e) {
         console.error('[CreditLedger] insert failed:', e);
       }
     }
 
     // For part payments, create credit ledger entry for credit portion
-    if (paymentMethod === 'part' && paymentBreakdown && activeStoreId) {
+    if (paymentMethod === 'part' && paymentBreakdown && resolvedStoreId) {
       const creditPortion = paymentBreakdown.find(p => p.method.toLowerCase() === 'credit' || p.method.toLowerCase() === 'due');
       if (creditPortion && creditPortion.amount > 0) {
         const creditEntry: CreditEntry = {
           id: generateId(),
-          store_id: activeStoreId,
+          store_id: resolvedStoreId,
           customer_name: finalCustomerName,
           customer_phone: finalCustomerPhone,
           bill_number: billNumber,
@@ -2075,7 +1858,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         try {
           const currentLedger = getCreditLedger();
           setCreditLedger([...currentLedger, creditEntry]);
-          await saveCreditEntryToCloud([creditEntry]);
+          await saveCreditLedgerMutation.mutateAsync();
         } catch (e) {
           console.error('[CreditLedger] insert failed for part payment credit:', e);
         }
@@ -2105,7 +1888,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
     setOrdersState(updatedOrders);
     setOrders(updatedOrders);
-    if (updatedOrder) saveOrderToCloud({ ...updatedOrder, status });
+    if (updatedOrder) saveOrderMutation.mutateAsync([]);
   };
 
   // Update order payment method
@@ -2116,7 +1899,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
     setOrdersState(updatedOrders);
     setOrders(updatedOrders);
-    if (updatedOrder) saveOrderToCloud({ ...updatedOrder, paymentMethod });
+    if (updatedOrder) saveOrderMutation.mutateAsync([]);
     toast.success('Payment method updated');
   };
 
@@ -2137,7 +1920,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
     setOrdersState(updatedOrders);
     setOrders(updatedOrders);
-    saveOrderToCloud(cancelledOrder); // Sync cancellation to cloud
+    saveOrderMutation.mutateAsync([]); // Sync cancellation to cloud
 
     // Free up table if dine-in
     if (order.orderType === 'dine-in' && order.tableNumber) {
@@ -2591,3 +2374,11 @@ export const usePOS = () => {
 export const usePOSSafe = () => {
   return useContext(POSContext);
 };
+
+
+
+
+
+
+
+

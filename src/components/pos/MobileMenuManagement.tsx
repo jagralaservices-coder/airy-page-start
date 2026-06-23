@@ -44,7 +44,7 @@ import {
 
 export const MobileMenuManagement: React.FC = () => {
   const navigate = useNavigate();
-  const { menuItems, categories, toggleItemAvailability, activeCategory, setActiveCategory, addMenuItems, deleteMenuItem, updateMenuItem, syncCategoriesFromMenu, lowStockItems, stores, activeStore, setActiveStoreId, getStoreSales, addCategory } = usePOS();
+  const { menuItems, categories, toggleItemAvailability, activeCategory, setActiveCategory, addMenuItems, deleteMenuItem, updateMenuItem, syncCategoriesFromMenu, lowStockItems, stores, activeStore, setActiveStoreId, getStoreSales, addCategory, isStoreLogin } = usePOS();
   const { canAccess: canAccessFeature } = useSubscription();
   const hasRecipeAccess = canAccessFeature('recipeInventory');
   const [searchQuery, setSearchQuery] = useState('');
@@ -216,7 +216,7 @@ export const MobileMenuManagement: React.FC = () => {
         <h1 className="font-bold text-lg flex-1">Menu</h1>
         
         {/* Store selector */}
-        {stores.length > 0 && (
+        {!isStoreLogin && stores.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="h-9 px-2 rounded-lg bg-secondary text-xs font-medium flex items-center gap-1 max-w-[100px] truncate">

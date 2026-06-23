@@ -52,7 +52,7 @@ interface ParsedMenuItem {
 
 export const MenuManagement: React.FC = () => {
   const navigate = useNavigate();
-  const { menuItems, categories, toggleItemAvailability, activeCategory, setActiveCategory, addMenuItems, deleteMenuItem, updateMenuItem, syncCategoriesFromMenu, lowStockItems, stores, activeStore, setActiveStoreId, getStoreSales, addCategory } = usePOS();
+  const { menuItems, categories, toggleItemAvailability, activeCategory, setActiveCategory, addMenuItems, deleteMenuItem, updateMenuItem, syncCategoriesFromMenu, lowStockItems, stores, activeStore, setActiveStoreId, getStoreSales, addCategory, isStoreLogin } = usePOS();
   const { canAccess: canAccessFeature } = useSubscription();
   const hasRecipeAccess = canAccessFeature('recipeInventory');
   const [searchQuery, setSearchQuery] = useState('');
@@ -264,47 +264,6 @@ export const MenuManagement: React.FC = () => {
             <p className="text-muted-foreground">Add and manage menu items</p>
           </div>
         </div>
-        
-        {/* Store Selector */}
-        {stores.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Store className="w-4 h-4" />
-                {activeStore ? activeStore.name : 'Select Store'}
-                <ChevronDown className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuItem 
-                onClick={() => setActiveStoreId(null)}
-                className="cursor-pointer"
-              >
-                <div className="flex items-center justify-between w-full">
-                  <span>All Stores (Global Stock)</span>
-                  {!activeStore && <Check className="w-4 h-4 text-primary" />}
-                </div>
-              </DropdownMenuItem>
-              {stores.map(store => (
-                <DropdownMenuItem 
-                  key={store.id}
-                  onClick={() => setActiveStoreId(store.id)}
-                  className="cursor-pointer"
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <div>
-                      <p className="font-medium">{store.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Sales: ₹{getStoreSales(store.id).toLocaleString()}
-                      </p>
-                    </div>
-                    {activeStore?.id === store.id && <Check className="w-4 h-4 text-primary" />}
-                  </div>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
       </div>
       <BulkMenuUpload
         isOpen={showBulkUpload}

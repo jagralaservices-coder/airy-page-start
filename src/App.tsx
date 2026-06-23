@@ -111,7 +111,23 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 import { PWAInstallPrompt } from "./components/pos/PWAInstallPrompt";
 import { BackgroundQROrderManager } from "./components/pos/BackgroundQROrderManager";
 
-const queryClient = new QueryClient();
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      gcTime: 1000 * 60 * 60 * 24 * 7, // 7 days (offline cache duration)
+      staleTime: 1000 * 60, // 1 minute
+      refetchOnWindowFocus: true,
+      retry: 2,
+    },
+  },
+});
+
+const persister = createSyncStoragePersister({
+  storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+});
 
 // Loading spinner component
 const LoadingSpinner = () => (
@@ -131,9 +147,19 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
   const posContext = usePOSSafe();
   const { isImpersonating } = useImpersonation();
   
-  // Safely access POS context values with defaults
-  const isStoreLogin = posContext?.isStoreLogin ?? false;
-  const activeStore = posContext?.activeStore ?? null;
+  // Safely access POS context values with defaults and localStorage fallback to prevent race conditions during login redirects
+  const isStoreLogin = posContext?.isStoreLogin || (typeof window !== 'undefined' && localStorage.getItem('pos_is_store_login') === 'true');
+  const activeStoreDataStr = typeof window !== 'undefined' ? localStorage.getItem('pos_active_store_data') : null;
+  
+  // Use useMemo behavior manually since we are in render body
+  let activeStore = posContext?.activeStore ?? null;
+  if (!activeStore && isStoreLogin && activeStoreDataStr) {
+    try {
+      activeStore = JSON.parse(activeStoreDataStr);
+    } catch {
+      activeStore = null;
+    }
+  }
   
   // Check for staff login session
   const staffSession = typeof window !== 'undefined' ? localStorage.getItem('pos_staff_session') : null;
@@ -522,6 +548,8 @@ const AppRoutes = () => {
   );
 };
 
+import { syncEngine } from '@/lib/syncEngine';
+
 const App = () => {
   const [permissionsComplete, setPermissionsComplete] = useState(() => {
     try {
@@ -531,22 +559,27 @@ const App = () => {
     }
   });
 
+  useEffect(() => {
+    syncEngine.start();
+    return () => syncEngine.stop();
+  }, []);
+
   // Show permission request screen on first launch (native only)
   if (!permissionsComplete) {
     return (
       <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
           <ThemeProvider>
             <PermissionRequestScreen onComplete={() => setPermissionsComplete(true)} />
           </ThemeProvider>
-        </QueryClientProvider>
+        </PersistQueryClientProvider>
       </ErrorBoundary>
     );
   }
 
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
         <ThemeProvider>
           <LocaleProvider>
             <SupabaseAuthProvider>
@@ -570,7 +603,7 @@ const App = () => {
             </SupabaseAuthProvider>
           </LocaleProvider>
         </ThemeProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </ErrorBoundary>
   );
 };

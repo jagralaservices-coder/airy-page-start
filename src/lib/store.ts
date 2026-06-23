@@ -441,22 +441,52 @@ export const initializeData = () => {
   }
 };
 
+// Helper to apply pendingSync to modified items automatically
+const applyPendingSync = <T extends { id?: string | number, lastUpdated?: string | Date, pendingSync?: boolean, updated_at?: string | Date, created_at?: string | Date }>(newItems: T[], oldItems: T[]): T[] => {
+  const oldMap = new Map(oldItems.map(i => [String(i.id), i]));
+  return newItems.map(newItem => {
+    const oldItem = oldMap.get(String(newItem.id));
+    if (!oldItem) {
+      return { ...newItem, pendingSync: true, lastUpdated: new Date().toISOString() };
+    }
+    const oldStr = JSON.stringify({ ...oldItem, pendingSync: undefined, lastUpdated: undefined, updated_at: undefined });
+    const newStr = JSON.stringify({ ...newItem, pendingSync: undefined, lastUpdated: undefined, updated_at: undefined });
+    if (oldStr !== newStr) {
+      return { ...newItem, pendingSync: true, lastUpdated: new Date().toISOString() };
+    }
+    // Allow SyncEngine to clear the flag
+    if (newItem.pendingSync === false) {
+      return { ...newItem, pendingSync: false, lastUpdated: oldItem.lastUpdated };
+    }
+    return { ...newItem, pendingSync: oldItem.pendingSync, lastUpdated: oldItem.lastUpdated };
+  });
+};
+
 // Data access functions - now fully scoped per store to enforce multi-device isolation
 export const getMenuItems = (): MenuItem[] => {
   const items = storage.get(getScopedKey(STORAGE_KEYS.MENU_ITEMS), defaultMenuItems);
   return items.filter(item => !['d1', 'd2', 'dr1', 'dr2', 'pz1', 'bg1', '1', '2', '3'].includes(item.id));
 };
-export const setMenuItems = (items: MenuItem[]) => storage.set(getScopedKey(STORAGE_KEYS.MENU_ITEMS), items);
+export const setMenuItems = (items: MenuItem[]) => {
+  const newItems = applyPendingSync(items, getMenuItems());
+  storage.set(getScopedKey(STORAGE_KEYS.MENU_ITEMS), newItems);
+};
 
 export const getCategories = (): Category[] => {
   const cats = storage.get(getScopedKey(STORAGE_KEYS.CATEGORIES), defaultCategories);
   return cats.filter(cat => !['desserts', 'drinks', 'pizza', 'burgers'].includes(cat.id));
 };
-export const setCategories = (categories: Category[]) => storage.set(getScopedKey(STORAGE_KEYS.CATEGORIES), categories);
+export const setCategories = (categories: Category[]) => {
+  const newCats = applyPendingSync(categories, getCategories());
+  storage.set(getScopedKey(STORAGE_KEYS.CATEGORIES), newCats);
+};
 
 // Orders, held bills, inventory, expenses are store-scoped
 export const getOrders = (): Order[] => storage.get(getScopedKey(STORAGE_KEYS.ORDERS), []);
-export const setOrders = (orders: Order[]) => storage.set(getScopedKey(STORAGE_KEYS.ORDERS), orders);
+export const setOrders = (orders: Order[]) => {
+  const newOrders = applyPendingSync(orders, getOrders());
+  storage.set(getScopedKey(STORAGE_KEYS.ORDERS), newOrders);
+};
 export const addOrder = (order: Order) => {
   const orders = getOrders();
   orders.push(order);
@@ -473,19 +503,34 @@ export const getStaff = (): Staff[] => storage.get(getScopedKey(STORAGE_KEYS.STA
 export const setStaff = (staff: Staff[]) => storage.set(getScopedKey(STORAGE_KEYS.STAFF), staff);
 
 export const getInventory = (): InventoryItem[] => storage.get(getScopedKey(STORAGE_KEYS.INVENTORY), []);
-export const setInventory = (items: InventoryItem[]) => storage.set(getScopedKey(STORAGE_KEYS.INVENTORY), items);
+export const setInventory = (items: InventoryItem[]) => {
+  const newItems = applyPendingSync(items, getInventory());
+  storage.set(getScopedKey(STORAGE_KEYS.INVENTORY), newItems);
+};
 
 export const getExpenses = (): Expense[] => storage.get(getScopedKey(STORAGE_KEYS.EXPENSES), []);
-export const setExpenses = (expenses: Expense[]) => storage.set(getScopedKey(STORAGE_KEYS.EXPENSES), expenses);
+export const setExpenses = (expenses: Expense[]) => {
+  const newItems = applyPendingSync(expenses, getExpenses());
+  storage.set(getScopedKey(STORAGE_KEYS.EXPENSES), newItems);
+};
 
 export const getCustomers = (): Customer[] => storage.get(getScopedKey(STORAGE_KEYS.CUSTOMERS), []);
-export const setCustomers = (items: Customer[]) => storage.set(getScopedKey(STORAGE_KEYS.CUSTOMERS), items);
+export const setCustomers = (items: Customer[]) => {
+  const newItems = applyPendingSync(items, getCustomers());
+  storage.set(getScopedKey(STORAGE_KEYS.CUSTOMERS), newItems);
+};
 
 export const getCreditLedger = (): CreditEntry[] => storage.get(getScopedKey(STORAGE_KEYS.CREDIT_LEDGER), []);
-export const setCreditLedger = (items: CreditEntry[]) => storage.set(getScopedKey(STORAGE_KEYS.CREDIT_LEDGER), items);
+export const setCreditLedger = (items: CreditEntry[]) => {
+  const newItems = applyPendingSync(items, getCreditLedger());
+  storage.set(getScopedKey(STORAGE_KEYS.CREDIT_LEDGER), newItems);
+};
 
 export const getCreditPayments = (): CreditPayment[] => storage.get(getScopedKey(STORAGE_KEYS.CREDIT_PAYMENTS), []);
-export const setCreditPayments = (items: CreditPayment[]) => storage.set(getScopedKey(STORAGE_KEYS.CREDIT_PAYMENTS), items);
+export const setCreditPayments = (items: CreditPayment[]) => {
+  const newItems = applyPendingSync(items, getCreditPayments());
+  storage.set(getScopedKey(STORAGE_KEYS.CREDIT_PAYMENTS), newItems);
+};
 
 export const getStores = (): Store[] => storage.get(STORAGE_KEYS.STORES, []);
 export const setStores = (stores: Store[]) => storage.set(STORAGE_KEYS.STORES, stores);

@@ -70,9 +70,9 @@ export const FEATURES: Record<string, FeatureConfig> = {
   dineIn: { key: 'dineIn', label: 'Dine In', restaurant: 'gold', retail: 'gold' },
   takeaway: { key: 'takeaway', label: 'Take Away', restaurant: 'gold', retail: 'gold' },
   delivery: { key: 'delivery', label: 'Delivery', restaurant: 'gold', retail: 'gold' },
-  kot: { key: 'kot', label: 'KOT System', restaurant: 'gold', retail: 'gold' },
-  kotPrint: { key: 'kotPrint', label: 'KOT Print', restaurant: 'gold', retail: 'gold' },
-  searchKot: { key: 'searchKot', label: 'Search KOT', restaurant: 'gold', retail: 'gold' },
+  kot: { key: 'kot', label: 'KOT System', restaurant: 'basic', retail: 'basic' },
+  kotPrint: { key: 'kotPrint', label: 'KOT Print', restaurant: 'basic', retail: 'basic' },
+  searchKot: { key: 'searchKot', label: 'Search KOT', restaurant: 'basic', retail: 'basic' },
   qrOrders: { key: 'qrOrders', label: 'QR Orders', restaurant: 'gold', retail: 'gold' },
   orderSummaryReport: { key: 'orderSummaryReport', label: 'Order Summary Report', restaurant: 'basic', retail: 'basic' },
   executiveSaleReport: { key: 'executiveSaleReport', label: 'Executive Sale Summary', restaurant: 'gold', retail: 'gold' },
@@ -115,7 +115,7 @@ export const FEATURES: Record<string, FeatureConfig> = {
   purchaseOrders: { key: 'purchaseOrders', label: 'Purchase Orders', restaurant: 'gold', retail: 'gold' },
   workforceAnalytics: { key: 'workforceAnalytics', label: 'Workforce Analytics', restaurant: 'gold', retail: 'gold' },
   creditLedger: { key: 'creditLedger', label: 'Credit Ledger', restaurant: 'gold', retail: 'basic' },
-  kotListing: { key: 'kotListing', label: 'KOT Listing', restaurant: 'gold', retail: 'platinum' },
+  kotListing: { key: 'kotListing', label: 'KOT Listing', restaurant: 'basic', retail: 'basic' },
 };
 
 // ─── ADDON → FEATURE KEY MAPPING ───────────────────────────

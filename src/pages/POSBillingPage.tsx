@@ -2053,26 +2053,8 @@ export const POSBillingPage: React.FC = () => {
               <span className="text-sm font-medium">{t('pos.card')}</span>
             </button>
             
-            {/* Due */}
-            <button
-              onClick={() => {
-                handlePaymentSelect('due');
-                setShowMorePayments(false);
-              }}
-              disabled={cart.length === 0}
-              className={cn(
-                'h-16 rounded-lg flex flex-col items-center justify-center gap-1 border-2 transition-all',
-                selectedPayment === 'due' 
-                  ? 'border-primary bg-primary/10 text-primary' 
-                  : 'border-border hover:border-primary/50',
-                activeSection === 'payments' && showMorePayments && sheetPaymentHighlightIndex === 3 && 'ring-2 ring-primary ring-offset-1 border-primary scale-[1.02]',
-                cart.length === 0 && 'opacity-50 cursor-not-allowed'
-              )}
-            >
-              <Clock className="w-5 h-5" />
-              <span className="text-sm font-medium">{t('common.due')}</span>
-            </button>
-            
+            {/* Due removed as it is duplicate of Credit */}
+
             {/* Part Payment */}
             <button
               onClick={() => {

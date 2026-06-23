@@ -3,8 +3,11 @@ import { POSContext } from '@/contexts/POSContext';
 import { Order, CartItem } from '@/lib/store';
 import { getPaymentBreakdownSummary, parseOrderPaymentBreakdown } from '@/lib/paymentBreakdown';
 import { supabase } from '@/integrations/supabase/client';
+import { getCreditPayments, getCreditLedger, safeMerge } from '@/lib/store';
 import { startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
 import { useOwnerStore } from './useOwnerStore';
+import { useCloudData } from './useCloudData';
+import { dbToLocalCreditEntry, dbToLocalCreditPayment } from '@/lib/transformers';
 
 export type TimeRange = 'today' | 'week' | 'month' | 'all' | 'custom';
 export interface CustomDateRange {
@@ -165,6 +168,14 @@ const getStoreCodeFromStorage = (): string | null => {
 export const useAnalytics = (timeRange: TimeRange = 'today', customDateRange?: CustomDateRange) => {
   const posContext = useContext(POSContext);
   const { selectedStoreId, isOwner } = useOwnerStore();
+
+  const { data: cloudCreditLedger } = useCloudData('credit_ledger', (data) => {
+    return (data?.items || []).map(dbToLocalCreditEntry);
+  }, []);
+
+  const { data: cloudCreditPayments } = useCloudData('credit_payments', (data) => {
+    return (data?.items || []).map(dbToLocalCreditPayment);
+  }, []);
 
   const tables = posContext?.tables || [];
   const heldBills = posContext?.heldBills || [];
@@ -348,8 +359,10 @@ export const useAnalytics = (timeRange: TimeRange = 'today', customDateRange?: C
     };
   }, [effectiveStoreId, fetchOrdersFromDB]);
 
-  // Use DB orders as primary source
-  const orders = dbOrders.length > 0 ? dbOrders : (posContext?.orders || []);
+  // Merge DB orders and local orders to ensure unsynced local data is visible
+  const orders = useMemo(() => {
+    return safeMerge(posContext?.orders || [], dbOrders);
+  }, [dbOrders, posContext?.orders]);
 
   // Filter orders by time range
   const filteredOrders = useMemo(() => {
@@ -672,39 +685,34 @@ export const useAnalytics = (timeRange: TimeRange = 'today', customDateRange?: C
           }
         }
 
-        let q = supabase
-          .from('credit_payments')
-          .select('amount, payment_method, created_at')
-          .eq('store_id', effectiveStoreId);
-        if (startDate) q = q.gte('created_at', startDate.toISOString());
-        if (endDate) q = q.lte('created_at', endDate.toISOString());
-
-        const { data, error } = await q;
-        if (error || cancelled) return;
-
+        const allPayments = cloudCreditPayments || getCreditPayments();
+        const storePayments = allPayments.filter(p => !effectiveStoreId || p.store_id === effectiveStoreId);
+        
         let collected = 0;
         let count = 0;
         const paymentsList: any[] = [];
-        (data || []).forEach((row: any) => {
-          collected += Number(row.amount || 0);
-          count += 1;
-          paymentsList.push(row);
+        
+        storePayments.forEach((row: any) => {
+          const rowDate = new Date(row.created_at || row.createdAt);
+          const passesStart = !startDate || isAfter(rowDate, startDate) || rowDate.getTime() === startDate.getTime();
+          const passesEnd = !endDate || rowDate <= endDate;
+          
+          if (passesStart && passesEnd) {
+            collected += Number(row.amount || 0);
+            count += 1;
+            paymentsList.push(row);
+          }
         });
         setCreditPaymentsAgg({ collected, count, payments: paymentsList });
 
         // Fetch Total Outstanding regardless of timeRange
         let totalOut = 0;
-        try {
-          const { data: ledgerData, error: ledgerError } = await supabase
-            .from('credit_ledger')
-            .select('due_amount')
-            .eq('store_id', effectiveStoreId);
-          if (!ledgerError && ledgerData) {
-            ledgerData.forEach((row: any) => {
-              totalOut += Number(row.due_amount || 0);
-            });
-          }
-        } catch (e) {}
+        const allLedger = cloudCreditLedger || getCreditLedger();
+        const storeLedger = allLedger.filter(l => !effectiveStoreId || l.store_id === effectiveStoreId);
+        storeLedger.forEach((row: any) => {
+          totalOut += Number(row.due_amount || 0);
+        });
+        
         setTotalCreditLedger({ outstanding: totalOut });
       } catch (e) {
         // ignore - credit payments optional
@@ -712,7 +720,7 @@ export const useAnalytics = (timeRange: TimeRange = 'today', customDateRange?: C
     };
     load();
     return () => { cancelled = true; };
-  }, [effectiveStoreId, timeRange, dbOrders.length, customDateRange]);
+  }, [effectiveStoreId, timeRange, orders.length, customDateRange, cloudCreditLedger, cloudCreditPayments]);
 
   // Payment Summary — Credit replaces Due; adds Credit Outstanding / Credit Collected
   const paymentSummary: PaymentSummary[] = useMemo(() => {
@@ -1005,3 +1013,4 @@ export const useAnalytics = (timeRange: TimeRange = 'today', customDateRange?: C
     refreshData: fetchOrdersFromDB,
   };
 };
+

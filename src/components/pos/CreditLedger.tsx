@@ -37,7 +37,11 @@ export const CreditLedger: React.FC = () => {
   const navigate = useNavigate();
   const { formatCurrency } = useLocale();
   const { activeStore } = usePOS();
-  const storeId = activeStore?.id;
+  
+  // Use robust fallback for storeId to ensure it works for store managers as well
+  const storeId = activeStore?.id 
+    || localStorage.getItem('pos_active_store') 
+    || JSON.parse(localStorage.getItem('pos_active_store_data') || '{}')?.id;
 
   const { syncCreditLedger, syncCreditPayments, saveCreditEntryToCloud, saveCreditPaymentToCloud } = useStoreDataSync();
 
@@ -56,7 +60,10 @@ export const CreditLedger: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'partial' | 'paid'>('all');
 
   const fetchEntries = useCallback(async () => {
-    if (!storeId) return;
+    if (!storeId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     
     // Load local cache immediately

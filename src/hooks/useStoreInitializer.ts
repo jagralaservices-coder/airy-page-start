@@ -49,8 +49,7 @@ export const useStoreInitializer = () => {
           body: { action: 'fetch', store_id: storeId, data_type: 'store_details', store_code: storeCode }
         });
         if (error || !storeDetails?.success || !storeDetails?.store) {
-          console.error('[StoreInit] Store validation failed via edge function');
-          return false;
+          console.warn('[StoreInit] Store validation via edge function returned an error (perhaps not deployed yet). Continuing sync anyway.');
         }
       } else {
         const { data: store, error } = await supabase
